@@ -298,34 +298,91 @@ def create_assignment_document():
     r_h5.font.color.rgb = primary_color
     
     p_ss_intro = doc.add_paragraph()
-    p_ss_intro.add_run("Include screenshots of the completed application running in the browser.")
+    p_ss_intro.add_run("The following screenshots illustrate the completed, responsive Full Stack application in operation across desktop, mobile, interactive study planning, visual diagram rendering, and dark mode themes.")
     p_ss_intro.paragraph_format.space_after = Pt(8)
     
     screenshots = [
-        ("Screenshot 1: Desktop / Home Page", "Full-width desktop view showing the application header, online status badge, initial welcome message from TinySteps AI, and 4 suggested quick-start prompt chips in the lavender-purple theme.", "[Insert Screenshot 1: Desktop Home Interface Here]"),
-        ("Screenshot 2: Mobile / Responsive View", "Mobile screen view (375px/412px width) demonstrating full-height 100dvh layout, compact header, touch-friendly prompt chips, and adapted chat bubbles.", "[Insert Screenshot 2: Mobile Viewport Interface Here]"),
-        ("Screenshot 3: JavaScript Interactive Feature (Goal Card & Mermaid Diagram)", "Interactive Multi-Day Study Plan card with Day 1/Day 2 task checklists, visual progress bar (e.g. 50% complete), and an embedded visual Mermaid flowchart diagram.", "[Insert Screenshot 3: Interactive Goal Card & Mermaid Flowchart Here]"),
-        ("Screenshot 4: Form Validation & Dynamic Features", "Active chat conversation demonstrating client-side validation, three-dot jumping typing indicator while AI is reasoning, and copy-to-clipboard confirmation state.", "[Insert Screenshot 4: Form Validation & Typing Indicator Here]")
+        (
+            "Screenshot 1: Desktop / Home Page (Light Mode)",
+            "Full-width desktop view showing the application header, live online pulse indicator, theme toggle (Sun/Moon), initial welcome message from TinySteps AI, and 4 suggested quick-start prompt chips in the lavender-purple aesthetic.",
+            r"C:\FSD\TinySteps_AI\screenshots\screenshot_1_desktop_home.png",
+            Inches(6.0),
+            "Figure 1: TinySteps AI Desktop Interface (Light Mode) with Suggested Study Prompts"
+        ),
+        (
+            "Screenshot 2: Mobile / Responsive View",
+            "Mobile screen view (390px width) demonstrating full-height 100dvh layout, compact responsive header, touch-friendly prompt chips, and adapted message bubbles.",
+            r"C:\FSD\TinySteps_AI\screenshots\screenshot_2_mobile_view.png",
+            Inches(3.4),
+            "Figure 2: Mobile Responsive Viewport Layout (100dvh) with Adaptive Spacing"
+        ),
+        (
+            "Screenshot 3: JavaScript Interactive Feature (Multi-Day Goal Card & Live Progress)",
+            "Interactive Multi-Day Study Plan card with Day 1 / Day 2 / Day 3 task checklists, real-time dynamic progress bar (e.g. 40% complete), one-click progress reporting, and state persistence in localStorage.",
+            r"C:\FSD\TinySteps_AI\screenshots\screenshot_3_interactive_goal_card.png",
+            Inches(6.0),
+            "Figure 3: Interactive Multi-Day Study Plan with Checklists, Live Progress Bar, and Coaching Actions"
+        ),
+        (
+            "Screenshot 4: Technical Concept Explanation (Mermaid Flowchart & Comparison Table)",
+            "Dynamic technical tutoring response rendering an embedded Mermaid SVG flowchart illustrating the Full Stack client-server architecture, accompanied by a formatted Markdown comparison table.",
+            r"C:\FSD\TinySteps_AI\screenshots\screenshot_4_mermaid_diagram_and_table.png",
+            Inches(6.0),
+            "Figure 4: Client-Server Architecture Diagram Rendered Dynamically via Mermaid.js & GFM Table"
+        ),
+        (
+            "Screenshot 5: Dark Mode Theme Support & Palette Shift",
+            "Demonstration of the newly implemented dark mode theme, featuring midnight-violet page background (#0F081D), high-contrast message bubbles, and theme toggle control in the header.",
+            r"C:\FSD\TinySteps_AI\screenshots\screenshot_5_dark_mode.png",
+            Inches(6.0),
+            "Figure 5: Dark Mode Theme Interface featuring Deep Midnight-Violet Palette and Accessible Contrast"
+        ),
+        (
+            "Screenshot 6: Interactive Study Plan & Goal Card in Dark Mode",
+            "The interactive goal checklist and progress bar seamlessly adapting to the dark theme with vibrant lavender accents and theme persistence across sessions.",
+            r"C:\FSD\TinySteps_AI\screenshots\screenshot_6_dark_mode_goal_card.png",
+            Inches(6.0),
+            "Figure 6: Interactive Study Plan and Progress Tracking Adapted for Dark Mode"
+        )
     ]
     
-    for title, desc, placeholder in screenshots:
+    import os
+    for title, desc, img_path, img_width, caption in screenshots:
         p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(8)
         p.paragraph_format.space_after = Pt(2)
         r_t = p.add_run(title)
         r_t.bold = True
+        r_t.font.color.rgb = dark_text
+        
         p_d = doc.add_paragraph()
-        p_d.paragraph_format.left_indent = Inches(0.25)
-        p_d.paragraph_format.space_after = Pt(4)
+        p_d.paragraph_format.left_indent = Inches(0.2)
+        p_d.paragraph_format.space_after = Pt(6)
         p_d.add_run(desc)
         
-        # Placeholder Box
-        p_box = doc.add_paragraph()
-        p_box.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_box.paragraph_format.space_after = Pt(12)
-        r_box = p_box.add_run(f"\n{placeholder}\n")
-        r_box.italic = True
-        r_box.font.color.rgb = gray_text
-        r_box.font.size = Pt(10)
+        if os.path.exists(img_path):
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_img.paragraph_format.space_before = Pt(4)
+            p_img.paragraph_format.space_after = Pt(4)
+            run_img = p_img.add_run()
+            run_img.add_picture(img_path, width=img_width)
+            
+            p_cap = doc.add_paragraph()
+            p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_cap.paragraph_format.space_after = Pt(14)
+            r_cap = p_cap.add_run(caption)
+            r_cap.italic = True
+            r_cap.font.size = Pt(9)
+            r_cap.font.color.rgb = gray_text
+        else:
+            p_box = doc.add_paragraph()
+            p_box.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_box.paragraph_format.space_after = Pt(12)
+            r_box = p_box.add_run(f"\n[{title} - Image File Not Found]\n")
+            r_box.italic = True
+            r_box.font.color.rgb = gray_text
+            r_box.font.size = Pt(10)
         
     # 6. Testing
     h6 = doc.add_heading(level=2)
@@ -340,7 +397,8 @@ def create_assignment_document():
         ("Interactive Goal Checklist & Progress", "Clicking task checkbox toggles completion, updates progress bar percentage and header counter.", "Checkmark toggles, progress bar animates to new percentage, data saved to localStorage.", "Pass"),
         ("Mobile View & Responsiveness", "Application layout adapts cleanly on screens <= 768px without horizontal scrolling.", "Full-height 100dvh viewport utilized; text, buttons, and tables wrap and scroll cleanly.", "Pass"),
         ("Visual Mermaid Diagrams Rendering", "Mermaid code blocks render as visual SVG flowcharts with source code toggle.", "SVG flowchart renders visually in chat with toggle button to inspect code.", "Pass"),
-        ("Plan Adjustment Request Action", "Clicking 'Ask Coach to adjust schedule' generates automated adjustment prompt to AI.", "Prompt is automatically dispatched to coach; coach responds with revised schedule.", "Pass")
+        ("Plan Adjustment Request Action", "Clicking 'Ask Coach to adjust schedule' generates automated adjustment prompt to AI.", "Prompt is automatically dispatched to coach; coach responds with revised schedule.", "Pass"),
+        ("Light & Dark Theme Toggle", "Clicking Sun/Moon button toggles between light and dark themes; preserves state in localStorage.", "Theme switches smoothly between lavender light and midnight violet dark; persists on refresh.", "Pass")
     ]
     
     table_test = doc.add_table(rows=len(test_cases)+1, cols=4)
