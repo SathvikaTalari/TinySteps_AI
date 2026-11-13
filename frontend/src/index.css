@@ -1,7 +1,8 @@
 :root {
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --bg-page: #F6F4FD;
+  --bg-page: radial-gradient(circle at 10% 20%, #EDE7FB 0%, #F6F4FD 60%, #E8E1F8 100%);
   --bg-card: #FFFFFF;
+  --bg-messages: #FAF8FF;
   --purple-dark: #200E3A;
   --purple-primary: #3B1768;
   --purple-primary-hover: #4D2085;
@@ -15,6 +16,14 @@
   --text-primary: #200E3A;
   --text-secondary: #5E5274;
   --text-muted: #887B9F;
+  --user-bubble-bg: linear-gradient(135deg, #3B1768 0%, #2A0F52 100%);
+  --user-bubble-text: #FFFFFF;
+  --ai-bubble-bg: #FFFFFF;
+  --ai-bubble-border: #DDD3F5;
+  --ai-bubble-text: #200E3A;
+  --chat-input-bg: #F8F6FE;
+  --chat-input-border: #DDD3F5;
+  --chat-input-form-bg: #FFFFFF;
   --error-bg: #FDF2F2;
   --error-text: #991B1B;
   --error-border: #F87171;
@@ -25,6 +34,43 @@
   --shadow-sm: 0 2px 8px rgba(59, 23, 104, 0.06);
   --shadow-md: 0 8px 24px rgba(59, 23, 104, 0.08);
   --shadow-lg: 0 16px 40px rgba(59, 23, 104, 0.12);
+  --scrollbar-thumb: #D8CEF0;
+  --scrollbar-hover: #BFAEE4;
+}
+
+[data-theme="dark"] {
+  --bg-page: radial-gradient(circle at 10% 20%, #16082B 0%, #0E051C 60%, #130726 100%);
+  --bg-card: #180D2E;
+  --bg-messages: #120824;
+  --purple-dark: #FAF8FF;
+  --purple-primary: #8B5CF6;
+  --purple-primary-hover: #A78BFA;
+  --purple-accent: #A78BFA;
+  --purple-accent-light: #C4B5FD;
+  --lavender-light: #241443;
+  --lavender-subtle: #2C1851;
+  --lavender-border: #442976;
+  --lavender-chip-bg: #271549;
+  --lavender-chip-hover: #361F63;
+  --text-primary: #F5F3FF;
+  --text-secondary: #C8B9EF;
+  --text-muted: #9E8EC2;
+  --user-bubble-bg: linear-gradient(135deg, #6D28D9 0%, #4C1D95 100%);
+  --user-bubble-text: #FFFFFF;
+  --ai-bubble-bg: #1F1139;
+  --ai-bubble-border: #442976;
+  --ai-bubble-text: #F5F3FF;
+  --chat-input-bg: #180D2E;
+  --chat-input-border: #442976;
+  --chat-input-form-bg: #221340;
+  --error-bg: #3B1219;
+  --error-text: #FCA5A5;
+  --error-border: #991B1B;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --scrollbar-thumb: #452B75;
+  --scrollbar-hover: #603C9E;
 }
 
 * {
@@ -37,11 +83,12 @@ html, body {
   height: 100%;
   width: 100%;
   font-family: var(--font-family);
-  background-color: var(--bg-page);
+  background: var(--bg-page);
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 #root {
@@ -61,10 +108,10 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D8CEF0;
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #BFAEE4;
+  background: var(--scrollbar-hover);
 }

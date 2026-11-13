@@ -12,6 +12,22 @@ import './App.css';
 
 const STORAGE_KEY = 'tinysteps_chat_history';
 const GOAL_STORAGE_KEY = 'tinysteps_active_goal';
+const THEME_STORAGE_KEY = 'tinysteps_theme';
+
+function getInitialTheme(): 'light' | 'dark' {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'dark' || saved === 'light') {
+      return saved;
+    }
+  } catch (err) {
+    console.error('Failed to load theme preference:', err);
+  }
+  if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
 
 const WELCOME_MESSAGE: Message = {
   id: 'welcome-msg',
@@ -68,6 +84,7 @@ function getInitialActiveGoal(messages: Message[]): GoalData | null {
 }
 
 export function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
   const [messages, setMessages] = useState<Message[]>(getInitialMessages);
   const [activeGoal, setActiveGoal] = useState<GoalData | null>(() =>
     getInitialActiveGoal(messages)
@@ -75,6 +92,20 @@ export function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Apply theme to document and persist
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (err) {
+      console.error('Failed to save theme to localStorage:', err);
+    }
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
 
   // Persist messages to localStorage
   useEffect(() => {
@@ -201,11 +232,13 @@ export function App() {
   return (
     <div className="app-container">
       <div className="chat-card">
-        {/* Header with Title, Active Goal Pill & Clear Button */}
+        {/* Header with Title, Active Goal Pill, Theme Toggle & Clear Button */}
         <Header
           onClearChat={handleClearChat}
           messageCount={messages.length}
           activeGoal={activeGoal}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
         />
 
         {/* Error notification banner */}

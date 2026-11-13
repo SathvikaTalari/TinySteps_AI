@@ -6,38 +6,68 @@ interface MermaidDiagramProps {
   chart: string;
 }
 
-// Initialize mermaid once with clean modern theme settings
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'base',
-  themeVariables: {
-    primaryColor: '#EDE9FE',
-    primaryTextColor: '#200E3A',
-    primaryBorderColor: '#7C3AED',
-    lineColor: '#5B21B6',
-    secondaryColor: '#FAF5FF',
-    tertiaryColor: '#FFFFFF',
-    fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
-  },
-  securityLevel: 'loose',
-});
-
 export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svgContent, setSvgContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
+  const [themeMode, setThemeMode] = useState<string>(
+    () => document.documentElement.getAttribute('data-theme') || 'light'
+  );
+
+  // Detect theme changes to re-render diagram with matching colors
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      setThemeMode(activeTheme);
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
+    const isDark = themeMode === 'dark';
     const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark ? 'dark' : 'base',
+      themeVariables: isDark
+        ? {
+            darkMode: true,
+            background: '#1A0D32',
+            primaryColor: '#2E1955',
+            primaryTextColor: '#FAF8FF',
+            primaryBorderColor: '#8B5CF6',
+            lineColor: '#C4B5FD',
+            secondaryColor: '#221340',
+            tertiaryColor: '#180D2E',
+            fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+          }
+        : {
+            darkMode: false,
+            primaryColor: '#EDE9FE',
+            primaryTextColor: '#200E3A',
+            primaryBorderColor: '#7C3AED',
+            lineColor: '#5B21B6',
+            secondaryColor: '#FAF5FF',
+            tertiaryColor: '#FFFFFF',
+            fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+          },
+      securityLevel: 'loose',
+    });
 
     async function renderDiagram() {
       if (!chart.trim()) return;
 
       try {
         setError(null);
-        // Clean any leading/trailing ticks or mermaid tags if accidentally included
         const cleanChart = chart
           .replace(/^```mermaid\s*/i, '')
           .replace(/```$/, '')
@@ -60,11 +90,10 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
 
     return () => {
       isMounted = false;
-      // Clean up any stray mermaid temporary element
       const tempElem = document.getElementById(uniqueId);
       if (tempElem) tempElem.remove();
     };
-  }, [chart]);
+  }, [chart, themeMode]);
 
   return (
     <div className="mermaid-wrapper">
@@ -117,4 +146,3 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
     </div>
   );
 };
-

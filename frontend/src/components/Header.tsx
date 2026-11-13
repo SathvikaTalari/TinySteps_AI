@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-import { Sparkles, Trash2, Check, X, Target } from 'lucide-react';
+import { Sparkles, Trash2, Check, X, Target, Sun, Moon } from 'lucide-react';
 import type { GoalData } from '../types/chat';
 
 interface HeaderProps {
   onClearChat: () => void;
   messageCount: number;
   activeGoal?: GoalData | null;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onClearChat, messageCount, activeGoal }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onClearChat,
+  messageCount,
+  activeGoal,
+  theme,
+  onToggleTheme,
+}) => {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleConfirmClear = () => {
@@ -45,6 +53,22 @@ export const Header: React.FC<HeaderProps> = ({ onClearChat, messageCount, activ
       </div>
 
       <div className="header-right">
+        {/* Theme Toggle Button */}
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className="theme-toggle-btn"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? (
+            <Sun size={16} className="theme-icon sun" />
+          ) : (
+            <Moon size={16} className="theme-icon moon" />
+          )}
+          <span className="theme-toggle-text">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+        </button>
+
         {showConfirm ? (
           <div className="clear-confirm-bar" role="alert">
             <span className="confirm-text">Clear chat?</span>
