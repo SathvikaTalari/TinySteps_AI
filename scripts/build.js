@@ -59,3 +59,4 @@ if (process.env.PORT && fs.existsSync(distIndex)) {
 
   console.log('\n✅ Production build completed successfully!');
 }
+
