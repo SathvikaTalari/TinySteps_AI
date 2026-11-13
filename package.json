@@ -7,7 +7,7 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev": "concurrently -k -n \"backend,frontend\" -c \"magenta,cyan\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "npm run install:all && npm run build --prefix frontend",
+    "build": "node scripts/build.js",
     "start": "node backend/server.js"
   },
   "keywords": [
