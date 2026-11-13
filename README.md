@@ -220,5 +220,25 @@ Handles student queries and returns study companion responses.
 
 ---
 
+## 🌐 Deploy to Render
+
+You can deploy TinySteps AI as a free full-stack web service on [Render](https://render.com) in under 3 minutes:
+
+1. **Sign Up / Log In** to [render.com](https://render.com) with GitHub.
+2. Click **New +** $\rightarrow$ **Web Service**.
+3. Select your repository: `TinySteps_AI`.
+4. Render will auto-detect the included `render.yaml` blueprint, or you can configure manually:
+   - **Environment**: `Node`
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+   - **Plan**: `Free`
+5. Under **Environment Variables**:
+   - `GEMINI_API_KEY`: *(Paste your Google Gemini API key)*
+   - `GEMINI_MODEL`: `gemini-3.5-flash-lite` *(or leave default)*
+6. Click **Deploy Web Service**.
+7. Once deployed, Render provides an SSL-enabled public URL (e.g. `https://tinysteps-ai.onrender.com`).
+
+---
+
 ## 📄 License
 MIT License. Created with ❤️ for students everywhere.

@@ -256,10 +256,10 @@ if (fs.existsSync(frontendDistPath)) {
 }
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   const currentKey = process.env.GEMINI_API_KEY;
   const currentModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
-  console.log(`✨ TinySteps AI Tutor & Coach Backend running on http://localhost:${PORT}`);
+  console.log(`✨ TinySteps AI Tutor & Coach Backend running on port ${PORT}`);
   if (!currentKey || currentKey.trim() === '') {
     console.warn(`⚠️ Warning: GEMINI_API_KEY is not set in backend/.env. API requests will return 503 until a key is added.`);
   } else {
