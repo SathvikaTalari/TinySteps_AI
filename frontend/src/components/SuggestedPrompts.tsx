@@ -8,6 +8,10 @@ interface SuggestedPromptsProps {
 
 export const SUGGESTED_PROMPTS = [
   {
+    text: 'Weekly Timetable: GATE, SDE Job, CAT & College Exams',
+    icon: CalendarRange,
+  },
+  {
     text: 'Create a weekly timetable for my subjects',
     icon: CalendarRange,
   },

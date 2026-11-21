@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Circle,
   Sparkles,
+  Table as TableIcon,
   LayoutGrid,
   Calendar,
   Layers,
@@ -24,7 +25,7 @@ interface WeeklyTimetableProps {
   readOnly?: boolean;
 }
 
-type ViewMode = 'grid' | 'day' | 'goal';
+type ViewMode = 'table' | 'grid' | 'day' | 'goal';
 
 const ORDERED_DAYS = [
   'Monday',
@@ -36,6 +37,16 @@ const ORDERED_DAYS = [
   'Sunday',
 ];
 
+const DAY_HEADER_COLORS: { [day: string]: string } = {
+  Monday: '#7C3AED',    // Purple
+  Tuesday: '#A855F7',   // Magenta
+  Wednesday: '#EC4899', // Pink
+  Thursday: '#F97316',  // Orange
+  Friday: '#F59E0B',    // Amber / Coral
+  Saturday: '#10B981',  // Emerald Green
+  Sunday: '#06B6D4',    // Sky Cyan
+};
+
 export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
   timetable,
   onToggleSlot,
@@ -43,7 +54,8 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
   onRequestAdjustment,
   readOnly = false,
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  // Default to the 2D "Class Schedule Table" matrix view!
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [selectedGoalFilter, setSelectedGoalFilter] = useState<string | null>(null);
   const [activeDayTab, setActiveDayTab] = useState<string>('Monday');
   const [activeGoalTab, setActiveGoalTab] = useState<string>(
@@ -64,18 +76,67 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
     );
   }, [timetable.schedule, selectedGoalFilter]);
 
-  // Group slots by Day
+  // Extract all unique time slots across the timetable in chronological order
+  const uniqueTimeSlots = useMemo(() => {
+    const slots: string[] = [];
+    timetable.schedule.forEach((s) => {
+      const trimmed = s.timeSlot.trim();
+      if (!slots.includes(trimmed)) {
+        slots.push(trimmed);
+      }
+    });
+
+    // Try chronological sorting if strings contain hour numbers (e.g. "07:30 - 08:30" or "7:00 AM")
+    return slots.sort((a, b) => {
+      const matchA = a.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i);
+      const matchB = b.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i);
+      if (matchA && matchB) {
+        let hourA = parseInt(matchA[1], 10);
+        let hourB = parseInt(matchB[1], 10);
+        const minA = matchA[2] ? parseInt(matchA[2], 10) : 0;
+        const minB = matchB[2] ? parseInt(matchB[2], 10) : 0;
+
+        if (matchA[3]?.toUpperCase() === 'PM' && hourA < 12) hourA += 12;
+        if (matchA[3]?.toUpperCase() === 'AM' && hourA === 12) hourA = 0;
+        if (matchB[3]?.toUpperCase() === 'PM' && hourB < 12) hourB += 12;
+        if (matchB[3]?.toUpperCase() === 'AM' && hourB === 12) hourB = 0;
+
+        const totalA = hourA * 60 + minA;
+        const totalB = hourB * 60 + minB;
+        return totalA - totalB;
+      }
+      return a.localeCompare(b);
+    });
+  }, [timetable.schedule]);
+
+  // Active days that have slots or standard 5/7 days
+  const activeDays = useMemo(() => {
+    const daysWithSlots = new Set(
+      timetable.schedule.map((s) => {
+        const matched = ORDERED_DAYS.find(
+          (od) => od.toLowerCase() === s.day.trim().toLowerCase()
+        );
+        return matched || s.day.trim();
+      })
+    );
+
+    // If schedule covers weekends, show all 7 days; otherwise show Monday - Friday
+    const hasWeekend = daysWithSlots.has('Saturday') || daysWithSlots.has('Sunday');
+    if (hasWeekend) {
+      return ORDERED_DAYS;
+    }
+    return ORDERED_DAYS.slice(0, 5); // Monday through Friday
+  }, [timetable.schedule]);
+
+  // Group slots by Day for the Grid and Day views
   const slotsByDay = useMemo(() => {
     const map: { [day: string]: TimetableSlot[] } = {};
 
-    // First populate ordered days
     ORDERED_DAYS.forEach((d) => {
       map[d] = [];
     });
 
-    // Populate actual slots
     filteredSchedule.forEach((slot) => {
-      // Find matching standard day or use slot.day as-is
       const matchedStandard = ORDERED_DAYS.find(
         (od) => od.toLowerCase() === slot.day.trim().toLowerCase()
       );
@@ -86,7 +147,6 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
       map[dayKey].push(slot);
     });
 
-    // Return entries that have slots, preserving ORDERED_DAYS priority
     const result: { day: string; slots: TimetableSlot[] }[] = [];
     ORDERED_DAYS.forEach((d) => {
       if (map[d] && map[d].length > 0) {
@@ -94,7 +154,6 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
       }
     });
 
-    // Add any non-standard days (e.g. "Day 1", "Day 2")
     Object.keys(map).forEach((d) => {
       if (!ORDERED_DAYS.includes(d) && map[d].length > 0) {
         result.push({ day: d, slots: map[d] });
@@ -104,26 +163,29 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
     return result;
   }, [filteredSchedule]);
 
-  // Set initial activeDayTab to the first available day if Monday is empty
-  useMemo(() => {
-    if (slotsByDay.length > 0 && !slotsByDay.some((s) => s.day === activeDayTab)) {
-      setActiveDayTab(slotsByDay[0].day);
-    }
-  }, [slotsByDay, activeDayTab]);
-
   // Copy full timetable to clipboard in Markdown table format
   const handleCopyTimetable = async () => {
     try {
       let md = `### 📅 ${timetable.title}\n`;
       if (timetable.weekRange) md += `**Week:** ${timetable.weekRange} | `;
-      if (timetable.totalDailyTime) md += `**Daily Time:** ${timetable.totalDailyTime}\n\n`;
+      if (timetable.totalDailyTime) md += `**Daily Study Time:** ${timetable.totalDailyTime}\n\n`;
 
-      md += `| Day | Time Slot | Goal / Subject | Task & Topic | Est. Time | Status |\n`;
-      md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+      md += `| Time Slot | ` + activeDays.map((d) => d).join(' | ') + ` |\n`;
+      md += `| :--- | ` + activeDays.map(() => ':---').join(' | ') + ` |\n`;
 
-      timetable.schedule.forEach((s) => {
-        const status = s.completed ? '✅ Done' : '⏳ Pending';
-        md += `| **${s.day}** | ${s.timeSlot} | ${s.goalTitle} | ${s.taskTitle} | ${s.duration || ''} | ${status} |\n`;
+      uniqueTimeSlots.forEach((slotTime) => {
+        const rowCells = activeDays.map((day) => {
+          const matched = timetable.schedule.filter(
+            (s) =>
+              s.day.trim().toLowerCase() === day.toLowerCase() &&
+              s.timeSlot.trim().toLowerCase() === slotTime.toLowerCase()
+          );
+          if (matched.length === 0) return '—';
+          return matched
+            .map((s) => `${s.completed ? '✅' : '⏳'} [${s.goalTitle}] ${s.taskTitle}`)
+            .join('<br/>');
+        });
+        md += `| **${slotTime}** | ${rowCells.join(' | ')} |\n`;
       });
 
       await navigator.clipboard.writeText(md);
@@ -144,7 +206,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
           </div>
           <div>
             <div className="timetable-subheading-row">
-              <span className="timetable-subheading">Multi-Goal Weekly Schedule</span>
+              <span className="timetable-subheading">Class Schedule & Multi-Goal Timetable</span>
               {timetable.weekRange && (
                 <span className="timetable-week-range">{timetable.weekRange}</span>
               )}
@@ -186,7 +248,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
       {/* Multi-Goal Subject Pills (Filterable) */}
       {timetable.goals && timetable.goals.length > 0 && (
         <div className="timetable-goals-filter-bar">
-          <span className="filter-label">Goals:</span>
+          <span className="filter-label">Goals / Subjects:</span>
           <button
             type="button"
             className={`goal-tag-pill ${selectedGoalFilter === null ? 'active' : ''}`}
@@ -248,20 +310,28 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
         {isAllComplete && (
           <div className="timetable-celebration-banner">
             <Sparkles size={14} />
-            <span>Outstanding consistency! You completed all weekly study sessions across all goals! 🎉</span>
+            <span>Outstanding consistency! You completed all scheduled sessions across all goals! 🎉</span>
           </div>
         )}
       </div>
 
-      {/* View Switcher: Weekly Grid vs Day Agenda vs By Goal */}
+      {/* View Switcher: Class Schedule Table (Default) vs Weekly Cards vs Day Agenda vs By Goal */}
       <div className="timetable-view-switcher">
+        <button
+          type="button"
+          className={`view-tab-btn ${viewMode === 'table' ? 'active' : ''}`}
+          onClick={() => setViewMode('table')}
+        >
+          <TableIcon size={13} />
+          <span>Class Schedule Table</span>
+        </button>
         <button
           type="button"
           className={`view-tab-btn ${viewMode === 'grid' ? 'active' : ''}`}
           onClick={() => setViewMode('grid')}
         >
           <LayoutGrid size={13} />
-          <span>Weekly Grid</span>
+          <span>Day Cards</span>
         </button>
         <button
           type="button"
@@ -269,7 +339,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
           onClick={() => setViewMode('day')}
         >
           <Calendar size={13} />
-          <span>Day-by-Day Agenda</span>
+          <span>Day Agenda</span>
         </button>
         <button
           type="button"
@@ -281,17 +351,137 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
         </button>
       </div>
 
-      {/* VIEW MODE 1: WEEKLY GRID */}
+      {/* =========================================================================
+          VIEW MODE 1: CLASS SCHEDULE TABLE MATRIX (IMAGE-INSPIRED)
+          ========================================================================= */}
+      {viewMode === 'table' && (
+        <div className="timetable-matrix-wrapper">
+          <div className="timetable-matrix-scroll">
+            <table className="timetable-matrix-table">
+              <thead>
+                <tr>
+                  <th className="matrix-time-header">Time Slots</th>
+                  {activeDays.map((day) => {
+                    const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
+                    return (
+                      <th
+                        key={day}
+                        className="matrix-day-header"
+                        style={{ backgroundColor: headerColor }}
+                      >
+                        <span className="matrix-day-title">{day}</span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {uniqueTimeSlots.map((timeSlot) => (
+                  <tr key={timeSlot} className="matrix-row">
+                    {/* Time Column (Y-Axis) */}
+                    <td className="matrix-time-cell">
+                      <div className="matrix-time-badge">
+                        <Clock size={11} className="matrix-clock-icon" />
+                        <span>{timeSlot}</span>
+                      </div>
+                    </td>
+
+                    {/* Day Columns (X-Axis) */}
+                    {activeDays.map((day) => {
+                      const cellSlots = filteredSchedule.filter((s) => {
+                        const sDay = s.day.trim().toLowerCase();
+                        const targetDay = day.toLowerCase();
+                        const sTime = s.timeSlot.trim().toLowerCase();
+                        const targetTime = timeSlot.toLowerCase();
+                        return (sDay === targetDay || sDay.startsWith(targetDay.slice(0, 3))) && sTime === targetTime;
+                      });
+
+                      if (cellSlots.length === 0) {
+                        return (
+                          <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-empty">
+                            <span className="empty-slot-label">—</span>
+                          </td>
+                        );
+                      }
+
+                      return (
+                        <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-occupied">
+                          {cellSlots.map((slot) => {
+                            const isDone = slot.completed;
+                            const slotColor = slot.goalColor || 'var(--lavender-accent)';
+
+                            return (
+                              <div
+                                key={slot.id}
+                                className={`matrix-slot-block ${isDone ? 'slot-completed' : ''}`}
+                                style={{ borderLeftColor: slotColor }}
+                              >
+                                <div className="matrix-slot-top">
+                                  <button
+                                    type="button"
+                                    className="matrix-slot-check"
+                                    onClick={() => onToggleSlot && onToggleSlot(slot.id)}
+                                    disabled={readOnly}
+                                    title={isDone ? 'Mark incomplete' : 'Mark complete'}
+                                  >
+                                    {isDone ? (
+                                      <CheckCircle2 size={15} className="check-icon checked" />
+                                    ) : (
+                                      <Circle size={15} className="check-icon unchecked" />
+                                    )}
+                                  </button>
+
+                                  <span
+                                    className="matrix-goal-tag"
+                                    style={{
+                                      color: slotColor,
+                                      backgroundColor: `${slotColor}16`,
+                                    }}
+                                  >
+                                    {slot.goalTitle}
+                                  </span>
+                                </div>
+
+                                <div className="matrix-slot-title">{slot.taskTitle}</div>
+
+                                {slot.duration && (
+                                  <span className="matrix-slot-duration">⏱ {slot.duration}</span>
+                                )}
+
+                                {slot.outcome && (
+                                  <div className="matrix-slot-outcome" title={slot.outcome}>
+                                    <Target size={10} className="outcome-icon" />
+                                    <span>{slot.outcome}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          VIEW MODE 2: DAY CARDS
+          ========================================================================= */}
       {viewMode === 'grid' && (
         <div className="timetable-grid-container">
           {slotsByDay.map(({ day, slots }) => {
             const dayDoneCount = slots.filter((s) => s.completed).length;
             const isDayFinished = slots.length > 0 && dayDoneCount === slots.length;
+            const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
 
             return (
               <div key={day} className={`timetable-day-col ${isDayFinished ? 'day-finished' : ''}`}>
-                <div className="day-col-header">
-                  <span className="day-col-name">{day}</span>
+                <div className="day-col-header" style={{ borderBottomColor: `${headerColor}30` }}>
+                  <span className="day-col-name" style={{ color: headerColor }}>{day}</span>
                   <span className={`day-col-badge ${isDayFinished ? 'done' : ''}`}>
                     {dayDoneCount}/{slots.length}
                   </span>
@@ -314,7 +504,6 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                             className="slot-checkbox-btn"
                             onClick={() => onToggleSlot && onToggleSlot(slot.id)}
                             disabled={readOnly}
-                            aria-label={isDone ? `Mark incomplete` : `Mark complete`}
                           >
                             {isDone ? (
                               <CheckCircle2 size={16} className="check-icon checked" />
@@ -369,10 +558,11 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
         </div>
       )}
 
-      {/* VIEW MODE 2: DAY-BY-DAY AGENDA */}
+      {/* =========================================================================
+          VIEW MODE 3: DAY-BY-DAY AGENDA
+          ========================================================================= */}
       {viewMode === 'day' && (
         <div className="timetable-day-view">
-          {/* Day Navigation Tabs */}
           <div className="day-tabs-bar">
             {slotsByDay.map(({ day, slots }) => {
               const dayDoneCount = slots.filter((s) => s.completed).length;
@@ -395,7 +585,6 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
             })}
           </div>
 
-          {/* Active Day Agenda Cards */}
           <div className="day-agenda-content">
             {(() => {
               const activeDayData = slotsByDay.find((d) => d.day === activeDayTab);
@@ -403,7 +592,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                 return (
                   <div className="empty-day-state">
                     <Calendar size={28} />
-                    <p>No study sessions scheduled for {activeDayTab} in this view.</p>
+                    <p>No study sessions scheduled for {activeDayTab}.</p>
                   </div>
                 );
               }
@@ -487,10 +676,11 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
         </div>
       )}
 
-      {/* VIEW MODE 3: BY GOAL BREAKDOWN */}
+      {/* =========================================================================
+          VIEW MODE 4: BY GOAL BREAKDOWN
+          ========================================================================= */}
       {viewMode === 'goal' && (
         <div className="timetable-by-goal-view">
-          {/* Goal selection tabs */}
           <div className="goal-tabs-bar">
             {timetable.goals.map((goal) => {
               const isSelected = activeGoalTab === goal.name;
@@ -520,7 +710,6 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
             })}
           </div>
 
-          {/* Goal sessions list */}
           <div className="goal-breakdown-content">
             {(() => {
               const goalSlots = timetable.schedule.filter(
