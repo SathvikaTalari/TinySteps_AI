@@ -4,12 +4,14 @@ import remarkGfm from 'remark-gfm';
 import { Sparkles, User, Copy, Check } from 'lucide-react';
 import type { Message } from '../types/chat';
 import { GoalCard } from './GoalCard';
+import { WeeklyTimetable } from './WeeklyTimetable';
 import { CodeBlock } from './CodeBlock';
 import { extractGoalData } from '../utils/goalParser';
 
 interface ChatMessageProps {
   message: Message;
   onToggleTask?: (messageId: string, taskId: string) => void;
+  onToggleTimetableSlot?: (messageId: string, slotId: string) => void;
   onReportProgress?: (taskTitle: string) => void;
   onRequestAdjustment?: (context?: string) => void;
 }
@@ -17,15 +19,17 @@ interface ChatMessageProps {
 export const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
   onToggleTask,
+  onToggleTimetableSlot,
   onReportProgress,
   onRequestAdjustment,
 }) => {
   const isUser = message.sender === 'user';
   const [copied, setCopied] = useState(false);
 
-  const { cleanedText, goalData: extractedGoal } = extractGoalData(message.text);
+  const { cleanedText, goalData: extractedGoal, timetableData: extractedTimetable } = extractGoalData(message.text);
   const activeGoalData = message.goalData || extractedGoal;
-  const displayText = activeGoalData ? cleanedText : message.text;
+  const activeTimetableData = message.timetableData || extractedTimetable;
+  const displayText = (activeGoalData || activeTimetableData) ? cleanedText : message.text;
 
   const formatTime = (timestamp: number) => {
     return new Intl.DateTimeFormat([], {
@@ -37,7 +41,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const handleCopy = async () => {
     try {
       let textToCopy = displayText;
-      if (activeGoalData) {
+      if (activeTimetableData) {
+        textToCopy = `${displayText}\n\n**Weekly Timetable: ${activeTimetableData.title}** (${activeTimetableData.weekRange || ''})\n` +
+          activeTimetableData.schedule
+            .map((s) => `- [${s.completed ? 'x' : ' '}] **${s.day}** [${s.timeSlot}] (${s.goalTitle}): ${s.taskTitle} (${s.duration || ''})`)
+            .join('\n');
+      } else if (activeGoalData) {
         const tasksSummary = activeGoalData.tasks
           .map(
             (t, i) =>
@@ -104,11 +113,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </ReactMarkdown>
               )}
 
+              {/* Interactive Multi-Day Single Goal Card */}
               {activeGoalData && (
                 <GoalCard
                   goal={activeGoalData}
                   onToggleTask={
                     onToggleTask ? (taskId) => onToggleTask(message.id, taskId) : undefined
+                  }
+                  onReportProgress={onReportProgress}
+                  onRequestAdjustment={onRequestAdjustment}
+                />
+              )}
+
+              {/* Interactive Multi-Goal Weekly Timetable */}
+              {activeTimetableData && (
+                <WeeklyTimetable
+                  timetable={activeTimetableData}
+                  onToggleSlot={
+                    onToggleTimetableSlot
+                      ? (slotId) => onToggleTimetableSlot(message.id, slotId)
+                      : undefined
                   }
                   onReportProgress={onReportProgress}
                   onRequestAdjustment={onRequestAdjustment}

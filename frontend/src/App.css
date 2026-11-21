@@ -1709,3 +1709,818 @@
     padding: 11px 14px;
   }
 }
+
+/* ==========================================================================
+   MULTI-GOAL WEEKLY TIMETABLE INTERFACE STYLING
+   ========================================================================== */
+
+.timetable-card-widget {
+  margin-top: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--lavender-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.timetable-card-widget:hover {
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.14);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.timetable-card-widget.timetable-all-complete {
+  border-color: #10B981;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, var(--bg-card) 100%);
+}
+
+/* Header */
+.timetable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.timetable-title-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.timetable-badge-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.25);
+}
+
+.timetable-card-widget.timetable-all-complete .timetable-badge-icon {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+.timetable-subheading-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.timetable-subheading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lavender-accent);
+}
+
+.timetable-week-range {
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--lavender-light);
+  color: var(--text-secondary);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+}
+
+.timetable-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.timetable-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timetable-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--lavender-light);
+  color: var(--lavender-dark);
+  border: 1px solid var(--lavender-border);
+}
+
+.timetable-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  background: var(--lavender-light);
+  color: var(--text-secondary);
+  border: 1px solid var(--lavender-border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.timetable-copy-btn:hover {
+  background: var(--lavender-mid);
+  color: var(--lavender-accent);
+}
+
+/* Goals Filter Bar */
+.timetable-goals-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(139, 92, 246, 0.04);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.filter-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
+.goal-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--lavender-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.goal-tag-pill:hover {
+  border-color: var(--lavender-accent);
+  color: var(--text-primary);
+}
+
+.goal-tag-pill.active {
+  background: var(--lavender-accent);
+  color: #FFFFFF;
+  border-color: var(--lavender-accent);
+}
+
+.goal-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.goal-dot-sm {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.goal-tag-count {
+  opacity: 0.75;
+  font-size: 0.68rem;
+}
+
+/* Progress Section */
+.timetable-progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timetable-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.timetable-progress-fill {
+  background: linear-gradient(90deg, #7C3AED 0%, #A78BFA 100%);
+}
+
+.timetable-celebration-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #065F46;
+  animation: fadeIn 0.4s ease;
+}
+
+/* View Switcher */
+.timetable-view-switcher {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--lavender-border);
+  padding-bottom: 8px;
+}
+
+.view-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.view-tab-btn:hover {
+  color: var(--lavender-accent);
+  background: var(--lavender-light);
+}
+
+.view-tab-btn.active {
+  background: var(--lavender-light);
+  color: var(--lavender-dark);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   VIEW 1: WEEKLY GRID
+   ========================================================================== */
+
+.timetable-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.timetable-day-col {
+  background: var(--lavender-light);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--lavender-border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 170px;
+}
+
+.timetable-day-col.day-finished {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.day-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+  padding-bottom: 6px;
+}
+
+.day-col-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.day-col-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--lavender-border);
+}
+
+.day-col-badge.done {
+  background: #10B981;
+  color: #FFFFFF;
+  border-color: #10B981;
+}
+
+.day-col-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timetable-slot-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--lavender-border);
+  border-left-width: 3.5px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  transition: all var(--transition-fast);
+}
+
+.timetable-slot-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+
+.timetable-slot-card.slot-done {
+  opacity: 0.72;
+  background: rgba(243, 244, 246, 0.6);
+}
+
+.timetable-slot-card.slot-done .slot-task-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.slot-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot-checkbox-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.slot-time-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.slot-goal-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  align-self: flex-start;
+  text-transform: capitalize;
+}
+
+.slot-task-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.slot-duration-tag {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.slot-outcome-text {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.25;
+}
+
+.outcome-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.slot-quick-report-btn {
+  align-self: flex-end;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.slot-quick-report-btn:hover {
+  background: #10B981;
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   VIEW 2: DAY-BY-DAY AGENDA
+   ========================================================================== */
+
+.timetable-day-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.day-tabs-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.day-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--lavender-border);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.day-tab-pill:hover {
+  border-color: var(--lavender-accent);
+  color: var(--text-primary);
+}
+
+.day-tab-pill.active {
+  background: var(--lavender-accent);
+  color: #FFFFFF;
+  border-color: var(--lavender-accent);
+}
+
+.day-tab-pill.finished {
+  border-color: #10B981;
+}
+
+.day-tab-badge {
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.day-tab-pill.active .day-tab-badge {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.day-agenda-content {
+  background: var(--lavender-light);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  border: 1px solid var(--lavender-border);
+}
+
+.agenda-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.agenda-day-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.agenda-slots-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.agenda-slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agenda-slot-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--lavender-border);
+  border-left-width: 4px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.agenda-slot-card.agenda-done {
+  opacity: 0.68;
+}
+
+.agenda-slot-card.agenda-done .agenda-task-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.agenda-checkbox-btn {
+  background: none;
+  border: none;
+  padding: 2px 0 0 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.agenda-slot-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agenda-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.agenda-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.agenda-goal-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.agenda-duration-pill {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  background: var(--lavender-light);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.agenda-task-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.agenda-outcome-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+}
+
+.agenda-report-btn {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.agenda-report-btn:hover {
+  background: #10B981;
+  color: #FFFFFF;
+}
+
+.day-badge-highlight {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--lavender-dark);
+  color: #FFFFFF;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   VIEW 3: BY GOAL BREAKDOWN
+   ========================================================================== */
+
+.timetable-by-goal-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.goal-tabs-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.goal-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--lavender-border);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.goal-tab-pill.active {
+  font-weight: 700;
+}
+
+.goal-breakdown-content {
+  background: var(--lavender-light);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  border: 1px solid var(--lavender-border);
+}
+
+.goal-breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left-width: 4px;
+  border-left-style: solid;
+  padding-left: 10px;
+  margin-bottom: 12px;
+}
+
+.goal-breakdown-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.goal-breakdown-meta {
+  margin: 2px 0 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.goal-completion-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--bg-card);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--lavender-border);
+}
+
+/* Footer Adjust Button */
+.timetable-footer {
+  border-top: 1px solid var(--lavender-border);
+  padding-top: 10px;
+}
+
+.adjust-timetable-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.adjust-timetable-btn:hover {
+  color: var(--lavender-accent);
+  background: var(--lavender-light);
+}
+
+/* Empty State */
+.empty-day-state {
+  text-align: center;
+  padding: 30px 10px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+/* ==========================================================================
+   DARK MODE ADJUSTMENTS FOR TIMETABLE
+   ========================================================================== */
+
+[data-theme='dark'] .timetable-card-widget {
+  background: #1F1338;
+  border-color: #3D2968;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .timetable-day-col {
+  background: #180D2E;
+  border-color: #2F1A52;
+}
+
+[data-theme='dark'] .timetable-slot-card {
+  background: #241442;
+  border-color: #3B2366;
+}
+
+[data-theme='dark'] .timetable-slot-card.slot-done {
+  background: #1B0F33;
+}
+
+[data-theme='dark'] .day-agenda-content,
+[data-theme='dark'] .goal-breakdown-content {
+  background: #180D2E;
+  border-color: #2F1A52;
+}
+
+[data-theme='dark'] .agenda-slot-card {
+  background: #241442;
+  border-color: #3B2366;
+}
+
+[data-theme='dark'] .agenda-slot-card.agenda-done {
+  background: #1B0F33;
+}
+
+[data-theme='dark'] .timetable-goals-filter-bar {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+[data-theme='dark'] .goal-tag-pill,
+[data-theme='dark'] .day-tab-pill,
+[data-theme='dark'] .goal-tab-pill {
+  background: #241442;
+  border-color: #3B2366;
+  color: #D1D5DB;
+}
+
+[data-theme='dark'] .timetable-celebration-banner {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #6EE7B7;
+}

@@ -5,13 +5,14 @@ import { SuggestedPrompts } from './components/SuggestedPrompts';
 import { ChatInput } from './components/ChatInput';
 import { TypingIndicator } from './components/TypingIndicator';
 import { sendChatMessage } from './services/api';
-import type { Message, GoalData } from './types/chat';
+import type { Message, GoalData, WeeklyTimetableData } from './types/chat';
 import { extractGoalData } from './utils/goalParser';
 import { AlertCircle } from 'lucide-react';
 import './App.css';
 
 const STORAGE_KEY = 'tinysteps_chat_history';
 const GOAL_STORAGE_KEY = 'tinysteps_active_goal';
+const TIMETABLE_STORAGE_KEY = 'tinysteps_active_timetable';
 const THEME_STORAGE_KEY = 'tinysteps_theme';
 
 function getInitialTheme(): 'light' | 'dark' {
@@ -32,7 +33,7 @@ function getInitialTheme(): 'light' | 'dark' {
 const WELCOME_MESSAGE: Message = {
   id: 'welcome-msg',
   sender: 'ai',
-  text: "Hi! I'm TinySteps AI. Tell me your study goals, and I'll help you take small steps towards achieving them.",
+  text: "Hi! I'm TinySteps AI. Tell me your study goals, multiple subjects, or exam deadlines, and I'll create a step-by-step roadmap or a weekly timetable for you!",
   timestamp: Date.now(),
 };
 
@@ -42,13 +43,14 @@ function getInitialMessages(): Message[] {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure any goalData within messages is preserved or extracted
         return parsed.map((msg: Message) => {
-          if (!msg.goalData && msg.text && msg.sender === 'ai') {
-            const { goalData } = extractGoalData(msg.text);
-            if (goalData) {
-              return { ...msg, goalData };
-            }
+          if ((!msg.goalData || !msg.timetableData) && msg.text && msg.sender === 'ai') {
+            const { goalData, timetableData } = extractGoalData(msg.text);
+            return {
+              ...msg,
+              goalData: msg.goalData || goalData,
+              timetableData: msg.timetableData || timetableData,
+            };
           }
           return msg;
         });
@@ -73,10 +75,31 @@ function getInitialActiveGoal(messages: Message[]): GoalData | null {
     console.error('Failed to load active goal from localStorage:', err);
   }
 
-  // Fallback: look for latest goal in messages
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].goalData) {
       return messages[i].goalData!;
+    }
+  }
+
+  return null;
+}
+
+function getInitialActiveTimetable(messages: Message[]): WeeklyTimetableData | null {
+  try {
+    const savedTimetable = localStorage.getItem(TIMETABLE_STORAGE_KEY);
+    if (savedTimetable) {
+      const parsed = JSON.parse(savedTimetable);
+      if (parsed && parsed.title && Array.isArray(parsed.schedule)) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load active timetable from localStorage:', err);
+  }
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].timetableData) {
+      return messages[i].timetableData!;
     }
   }
 
@@ -88,6 +111,9 @@ export function App() {
   const [messages, setMessages] = useState<Message[]>(getInitialMessages);
   const [activeGoal, setActiveGoal] = useState<GoalData | null>(() =>
     getInitialActiveGoal(messages)
+  );
+  const [activeTimetable, setActiveTimetable] = useState<WeeklyTimetableData | null>(() =>
+    getInitialActiveTimetable(messages)
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -129,6 +155,19 @@ export function App() {
     }
   }, [activeGoal]);
 
+  // Persist active timetable to localStorage
+  useEffect(() => {
+    try {
+      if (activeTimetable) {
+        localStorage.setItem(TIMETABLE_STORAGE_KEY, JSON.stringify(activeTimetable));
+      } else {
+        localStorage.removeItem(TIMETABLE_STORAGE_KEY);
+      }
+    } catch (err) {
+      console.error('Failed to save active timetable to localStorage:', err);
+    }
+  }, [activeTimetable]);
+
   // Smooth scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -153,19 +192,23 @@ export function App() {
     try {
       const aiReply = await sendChatMessage(text.trim(), updatedMessages);
 
-      // Check if AI generated a structured goal card
-      const { goalData } = extractGoalData(aiReply);
+      // Check if AI generated a structured goal card or weekly timetable
+      const { goalData, timetableData } = extractGoalData(aiReply);
 
       const aiMessage: Message = {
         id: `ai-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         sender: 'ai',
         text: aiReply,
         goalData: goalData,
+        timetableData: timetableData,
         timestamp: Date.now(),
       };
 
       if (goalData) {
         setActiveGoal(goalData);
+      }
+      if (timetableData) {
+        setActiveTimetable(timetableData);
       }
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -202,14 +245,37 @@ export function App() {
     });
   };
 
+  const handleToggleTimetableSlot = (messageId: string, slotId: string) => {
+    setMessages((prevMessages) => {
+      let updatedTimetable: WeeklyTimetableData | null = null;
+
+      const nextMessages = prevMessages.map((msg) => {
+        if (msg.id === messageId && msg.timetableData) {
+          const updatedSchedule = msg.timetableData.schedule.map((slot) =>
+            slot.id === slotId ? { ...slot, completed: !slot.completed } : slot
+          );
+          updatedTimetable = { ...msg.timetableData, schedule: updatedSchedule };
+          return { ...msg, timetableData: updatedTimetable };
+        }
+        return msg;
+      });
+
+      if (updatedTimetable) {
+        setActiveTimetable(updatedTimetable);
+      }
+
+      return nextMessages;
+    });
+  };
+
   const handleReportProgress = (taskTitle: string) => {
     handleSendMessage(`I just completed: "${taskTitle}"! What's our next tiny step?`);
   };
 
   const handleRequestAdjustment = (context?: string) => {
     const prompt = context
-      ? `Can we adjust my study plan for "${context}"? I need to reschedule some tasks and change my daily time.`
-      : `Can we adjust my study plan? I need to reschedule some tasks.`;
+      ? `Can we adjust my plan for "${context}"? I need to reschedule some tasks and rebalance my schedule.`
+      : `Can we adjust my study schedule? I need to reschedule some tasks.`;
     handleSendMessage(prompt);
   };
 
@@ -220,10 +286,12 @@ export function App() {
     };
     setMessages([freshWelcome]);
     setActiveGoal(null);
+    setActiveTimetable(null);
     setErrorMessage(null);
     try {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(GOAL_STORAGE_KEY);
+      localStorage.removeItem(TIMETABLE_STORAGE_KEY);
     } catch (err) {
       console.error('Failed to clear localStorage:', err);
     }
@@ -232,11 +300,12 @@ export function App() {
   return (
     <div className="app-container">
       <div className="chat-card">
-        {/* Header with Title, Active Goal Pill, Theme Toggle & Clear Button */}
+        {/* Header with Title, Active Goal / Timetable Pill, Theme Toggle & Clear Button */}
         <Header
           onClearChat={handleClearChat}
           messageCount={messages.length}
           activeGoal={activeGoal}
+          activeTimetable={activeTimetable}
           theme={theme}
           onToggleTheme={handleToggleTheme}
         />
@@ -253,42 +322,45 @@ export function App() {
               className="error-dismiss-btn"
               aria-label="Dismiss error"
             >
-              Dismiss
+              ×
             </button>
           </div>
         )}
 
-        {/* Message feed */}
-        <main className="messages-area" aria-label="Chat messages feed">
-          <div className="messages-list">
-            {messages.map((msg) => (
-              <ChatMessage
-                key={msg.id}
-                message={msg}
-                onToggleTask={handleToggleTask}
-                onReportProgress={handleReportProgress}
-                onRequestAdjustment={handleRequestAdjustment}
-              />
-            ))}
+        {/* Messages Stream */}
+        <div className="chat-messages" role="log" aria-live="polite">
+          {messages.map((message) => (
+            <ChatMessage
+              key={message.id}
+              message={message}
+              onToggleTask={handleToggleTask}
+              onToggleTimetableSlot={handleToggleTimetableSlot}
+              onReportProgress={handleReportProgress}
+              onRequestAdjustment={handleRequestAdjustment}
+            />
+          ))}
 
-            {/* Typing Indicator */}
-            {isLoading && <TypingIndicator />}
+          {isLoading && (
+            <div className="loading-wrapper">
+              <TypingIndicator />
+            </div>
+          )}
 
-            <div ref={messagesEndRef} />
-          </div>
-        </main>
+          <div ref={messagesEndRef} />
+        </div>
 
-        {/* Suggested Prompts */}
-        <SuggestedPrompts
-          onSelectPrompt={handleSendMessage}
-          disabled={isLoading}
-        />
+        {/* Suggested Quick Prompts (visible when conversation is fresh) */}
+        {messages.length <= 2 && (
+          <SuggestedPrompts
+            onSelectPrompt={handleSendMessage}
+            disabled={isLoading}
+          />
+        )}
 
-        {/* Chat input box */}
+        {/* Input Bar */}
         <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
       </div>
     </div>
   );
 }
-
 export default App;

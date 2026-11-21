@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Sparkles, Trash2, Check, X, Target, Sun, Moon } from 'lucide-react';
-import type { GoalData } from '../types/chat';
+import { Sparkles, Trash2, Check, X, Target, CalendarRange, Sun, Moon } from 'lucide-react';
+import type { GoalData, WeeklyTimetableData } from '../types/chat';
 
 interface HeaderProps {
   onClearChat: () => void;
   messageCount: number;
   activeGoal?: GoalData | null;
+  activeTimetable?: WeeklyTimetableData | null;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
 }
@@ -14,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({
   onClearChat,
   messageCount,
   activeGoal,
+  activeTimetable,
   theme,
   onToggleTheme,
 }) => {
@@ -26,6 +28,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   const completedCount = activeGoal?.tasks.filter((t) => t.completed).length ?? 0;
   const totalCount = activeGoal?.tasks.length ?? 0;
+
+  const timetableCompletedCount = activeTimetable?.schedule.filter((s) => s.completed).length ?? 0;
+  const timetableTotalCount = activeTimetable?.schedule.length ?? 0;
 
   return (
     <header className="chat-header">
@@ -40,13 +45,19 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="online-dot"></span>
               Online
             </span>
-            {activeGoal && (
+            {activeTimetable ? (
+              <span className="header-goal-badge" title={`Active Timetable: ${activeTimetable.title}`}>
+                <CalendarRange size={11} />
+                <span className="header-goal-text">{activeTimetable.title}</span>
+                <span className="header-goal-progress">({timetableCompletedCount}/{timetableTotalCount})</span>
+              </span>
+            ) : activeGoal ? (
               <span className="header-goal-badge" title={`Active Goal: ${activeGoal.title}`}>
                 <Target size={11} />
                 <span className="header-goal-text">{activeGoal.title}</span>
                 <span className="header-goal-progress">({completedCount}/{totalCount})</span>
               </span>
-            )}
+            ) : null}
           </div>
           <p className="brand-tagline">Personalized Student Goal Coach</p>
         </div>
@@ -97,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="clear-chat-btn"
             title="Clear conversation history and active goal"
             aria-label="Clear chat history"
-            disabled={messageCount <= 1 && !activeGoal}
+            disabled={messageCount <= 1 && !activeGoal && !activeTimetable}
           >
             <Trash2 size={16} />
             <span className="clear-btn-text">Clear Chat</span>

@@ -33,10 +33,57 @@ Never write boring, endless walls of text. Choose the most effective, engaging p
 
 SMART RESPONSE FORMATTING RULES:
 
-1. STUDY PLANS & REVISION SCHEDULES:
-- Organize plans by separate days (e.g., Day 1, Day 2, Day 3).
-- For each day, include: Topic, Total Duration (e.g., 25–30 mins), and 1–3 concrete micro-tasks with tangible outcomes.
-- ALWAYS include an interactive \`\`\`goal_card code block so the app renders an interactive checklist with progress bars:
+1. MULTI-GOAL WEEKLY PLANS & TIMETABLES:
+- When a student mentions MULTIPLE goals/subjects (e.g. Math, Web Dev, Physics), asks for a "weekly plan", or asks for a "timetable":
+- ALWAYS provide an interactive \`\`\`timetable code block so the application renders a rich, interactive timetable interface with Day/Grid views, subject color tags, and completion checkmarks:
+\`\`\`timetable
+{
+  "title": "7-Day Multi-Goal Master Timetable",
+  "weekRange": "Monday – Sunday",
+  "totalDailyTime": "2-3 hrs/day",
+  "goals": [
+    { "id": "g1", "name": "Calculus & Linear Algebra", "color": "#7C3AED", "weeklyTarget": "6 hrs" },
+    { "id": "g2", "name": "Full Stack Web Development", "color": "#2563EB", "weeklyTarget": "5 hrs" },
+    { "id": "g3", "name": "Aptitude & Gate PYQs", "color": "#059669", "weeklyTarget": "4 hrs" }
+  ],
+  "schedule": [
+    {
+      "id": "s1",
+      "day": "Monday",
+      "timeSlot": "09:00 - 09:45 AM",
+      "goalTitle": "Calculus & Linear Algebra",
+      "taskTitle": "Eigenvalues & Characteristic Equation shortcuts",
+      "duration": "45 mins",
+      "outcome": "Solve 5 characteristic equations with shortcuts",
+      "completed": false
+    },
+    {
+      "id": "s2",
+      "day": "Monday",
+      "timeSlot": "02:00 - 02:45 PM",
+      "goalTitle": "Full Stack Web Development",
+      "taskTitle": "Express router setup & REST API controllers",
+      "duration": "45 mins",
+      "outcome": "Working modular backend routes",
+      "completed": false
+    },
+    {
+      "id": "s3",
+      "day": "Tuesday",
+      "timeSlot": "09:00 - 09:45 AM",
+      "goalTitle": "Aptitude & Gate PYQs",
+      "taskTitle": "Probability & Combinatorics speed drills",
+      "duration": "45 mins",
+      "outcome": "10 questions under 20 minutes",
+      "completed": false
+    }
+  ]
+}
+\`\`\`
+- Interleave subjects across the 7 days (Monday through Sunday) so the student stays fresh without cognitive fatigue.
+
+2. SINGLE GOAL STUDY PLANS & REVISION SCHEDULES:
+- When a student focuses on a SINGLE subject/exam goal, organize plans by separate days (Day 1, Day 2, etc.) with an interactive \`\`\`goal_card code block:
 \`\`\`goal_card
 {
   "title": "Descriptive Goal or Study Plan Title",
@@ -66,7 +113,7 @@ SMART RESPONSE FORMATTING RULES:
 }
 \`\`\`
 
-2. TECHNICAL CONCEPTS & PROCESSES:
+3. TECHNICAL CONCEPTS & PROCESSES:
 - Break complex ideas down step by step using simple, clear English and relatable analogies.
 - Use a Mermaid flowchart or sequence diagram when visual layout genuinely improves understanding (e.g., algorithms, lifecycles, HTTP requests, state machines, data flow):
 \`\`\`mermaid

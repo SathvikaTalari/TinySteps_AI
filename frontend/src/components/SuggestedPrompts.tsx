@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Zap, CheckSquare, Clock } from 'lucide-react';
+import { Calendar, Zap, CheckSquare, Clock, CalendarRange } from 'lucide-react';
 
 interface SuggestedPromptsProps {
   onSelectPrompt: (promptText: string) => void;
@@ -7,6 +7,10 @@ interface SuggestedPromptsProps {
 }
 
 export const SUGGESTED_PROMPTS = [
+  {
+    text: 'Create a weekly timetable for my subjects',
+    icon: CalendarRange,
+  },
   {
     text: 'Create my study plan',
     icon: Calendar,
@@ -52,4 +56,3 @@ export const SuggestedPrompts: React.FC<SuggestedPromptsProps> = ({
     </div>
   );
 };
-
