@@ -1,18 +1,79 @@
 import React, { useState } from 'react';
 import { Copy, Check, Terminal } from 'lucide-react';
 import { MermaidDiagram } from './MermaidDiagram';
+import { WeeklyTimetable } from './WeeklyTimetable';
+import { GoalCard } from './GoalCard';
+import { parseTimetableJson, parseGoalCardJson } from '../utils/goalParser';
 
 interface CodeBlockProps {
   language?: string;
   value: string;
+  onToggleTimetableSlot?: (slotId: string) => void;
+  onToggleTask?: (taskId: string) => void;
+  onReportProgress?: (taskTitle: string) => void;
+  onRequestAdjustment?: (context?: string) => void;
 }
 
-export const CodeBlock: React.FC<CodeBlockProps> = ({ language, value }) => {
+export const CodeBlock: React.FC<CodeBlockProps> = ({
+  language,
+  value,
+  onToggleTimetableSlot,
+  onToggleTask,
+  onReportProgress,
+  onRequestAdjustment,
+}) => {
   const [copied, setCopied] = useState(false);
+  const normalizedLang = (language || '').toLowerCase().trim();
 
-  // If this is a Mermaid diagram block, render with MermaidDiagram component!
-  if (language === 'mermaid') {
+  // 1. Mermaid diagram block
+  if (normalizedLang === 'mermaid') {
     return <MermaidDiagram chart={value} />;
+  }
+
+  // 2. Weekly Timetable block (never show raw JSON code!)
+  const isTimetableCandidate =
+    normalizedLang === 'timetable' ||
+    normalizedLang === 'weekly_timetable' ||
+    normalizedLang === 'schedule' ||
+    ((normalizedLang === 'json' || !normalizedLang) && value.includes('"schedule"'));
+
+  if (isTimetableCandidate) {
+    const timetableData = parseTimetableJson(value);
+    if (timetableData) {
+      return (
+        <div className="timetable-codeblock-container my-4">
+          <WeeklyTimetable
+            timetable={timetableData}
+            onToggleSlot={onToggleTimetableSlot}
+            onReportProgress={onReportProgress}
+            onRequestAdjustment={onRequestAdjustment}
+          />
+        </div>
+      );
+    }
+  }
+
+  // 3. Single-Goal Study Plan Card block
+  const isGoalCandidate =
+    normalizedLang === 'goal_card' ||
+    normalizedLang === 'goal' ||
+    normalizedLang === 'study_plan' ||
+    ((normalizedLang === 'json' || !normalizedLang) && value.includes('"tasks"'));
+
+  if (isGoalCandidate) {
+    const goalData = parseGoalCardJson(value);
+    if (goalData) {
+      return (
+        <div className="goalcard-codeblock-container my-4">
+          <GoalCard
+            goal={goalData}
+            onToggleTask={onToggleTask}
+            onReportProgress={onReportProgress}
+            onRequestAdjustment={onRequestAdjustment}
+          />
+        </div>
+      );
+    }
   }
 
   const handleCopy = async () => {
@@ -60,4 +121,3 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, value }) => {
     </div>
   );
 };
-

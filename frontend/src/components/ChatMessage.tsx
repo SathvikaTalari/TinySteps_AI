@@ -90,6 +90,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                           <CodeBlock
                             language={match ? match[1] : undefined}
                             value={codeString}
+                            onToggleTimetableSlot={
+                              onToggleTimetableSlot
+                                ? (slotId) => onToggleTimetableSlot(message.id, slotId)
+                                : undefined
+                            }
+                            onToggleTask={
+                              onToggleTask
+                                ? (taskId) => onToggleTask(message.id, taskId)
+                                : undefined
+                            }
+                            onReportProgress={onReportProgress}
+                            onRequestAdjustment={onRequestAdjustment}
                           />
                         );
                       }

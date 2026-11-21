@@ -62,9 +62,24 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
     timetable.goals[0]?.name || ''
   );
   const [copied, setCopied] = useState(false);
+  const [localCompletedMap, setLocalCompletedMap] = useState<{ [slotId: string]: boolean }>({});
+
+  const isSlotCompleted = (slot: TimetableSlot) => {
+    return slot.id in localCompletedMap ? localCompletedMap[slot.id] : Boolean(slot.completed);
+  };
+
+  const handleToggleSlot = (slotId: string) => {
+    if (onToggleSlot) {
+      onToggleSlot(slotId);
+    }
+    setLocalCompletedMap((prev) => {
+      const current = slotId in prev ? prev[slotId] : Boolean(timetable.schedule.find((s) => s.id === slotId)?.completed);
+      return { ...prev, [slotId]: !current };
+    });
+  };
 
   const totalSlots = timetable.schedule.length;
-  const completedSlots = timetable.schedule.filter((s) => s.completed).length;
+  const completedSlots = timetable.schedule.filter((s) => isSlotCompleted(s)).length;
   const percentComplete = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
   const isAllComplete = totalSlots > 0 && completedSlots === totalSlots;
 
@@ -407,7 +422,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                       return (
                         <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-occupied">
                           {cellSlots.map((slot) => {
-                            const isDone = slot.completed;
+                            const isDone = isSlotCompleted(slot);
                             const slotColor = slot.goalColor || 'var(--lavender-accent)';
 
                             return (
@@ -420,7 +435,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                                   <button
                                     type="button"
                                     className="matrix-slot-check"
-                                    onClick={() => onToggleSlot && onToggleSlot(slot.id)}
+                                    onClick={() => handleToggleSlot(slot.id)}
                                     disabled={readOnly}
                                     title={isDone ? 'Mark incomplete' : 'Mark complete'}
                                   >
@@ -474,7 +489,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
       {viewMode === 'grid' && (
         <div className="timetable-grid-container">
           {slotsByDay.map(({ day, slots }) => {
-            const dayDoneCount = slots.filter((s) => s.completed).length;
+            const dayDoneCount = slots.filter((s) => isSlotCompleted(s)).length;
             const isDayFinished = slots.length > 0 && dayDoneCount === slots.length;
             const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
 
@@ -489,7 +504,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
 
                 <div className="day-col-slots">
                   {slots.map((slot) => {
-                    const isDone = slot.completed;
+                    const isDone = isSlotCompleted(slot);
                     const slotColor = slot.goalColor || 'var(--lavender-accent)';
 
                     return (
@@ -502,7 +517,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                           <button
                             type="button"
                             className="slot-checkbox-btn"
-                            onClick={() => onToggleSlot && onToggleSlot(slot.id)}
+                            onClick={() => handleToggleSlot(slot.id)}
                             disabled={readOnly}
                           >
                             {isDone ? (
@@ -602,12 +617,12 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                   <div className="agenda-day-header">
                     <h4>{activeDayTab} Agenda</h4>
                     <span className="agenda-slots-count">
-                      {activeDayData.slots.filter((s) => s.completed).length} of {activeDayData.slots.length} completed
+                      {activeDayData.slots.filter((s) => isSlotCompleted(s)).length} of {activeDayData.slots.length} completed
                     </span>
                   </div>
 
                   {activeDayData.slots.map((slot) => {
-                    const isDone = slot.completed;
+                    const isDone = isSlotCompleted(slot);
                     const slotColor = slot.goalColor || 'var(--lavender-accent)';
 
                     return (
@@ -619,7 +634,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                         <button
                           type="button"
                           className="agenda-checkbox-btn"
-                          onClick={() => onToggleSlot && onToggleSlot(slot.id)}
+                          onClick={() => handleToggleSlot(slot.id)}
                           disabled={readOnly}
                         >
                           {isDone ? (
@@ -740,12 +755,12 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                       </p>
                     </div>
                     <span className="goal-completion-badge">
-                      {goalSlots.filter((s) => s.completed).length}/{goalSlots.length} completed
+                      {goalSlots.filter((s) => isSlotCompleted(s)).length}/{goalSlots.length} completed
                     </span>
                   </div>
 
                   {goalSlots.map((slot) => {
-                    const isDone = slot.completed;
+                    const isDone = isSlotCompleted(slot);
 
                     return (
                       <div
@@ -756,7 +771,7 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                         <button
                           type="button"
                           className="agenda-checkbox-btn"
-                          onClick={() => onToggleSlot && onToggleSlot(slot.id)}
+                          onClick={() => handleToggleSlot(slot.id)}
                           disabled={readOnly}
                         >
                           {isDone ? (

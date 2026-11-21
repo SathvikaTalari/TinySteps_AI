@@ -93,6 +93,7 @@ SMART RESPONSE FORMATTING RULES:
 \`\`\`
 - Structure the schedule across the 7 days (Monday through Sunday) using standard, structured time slots (e.g. 07:30 - 08:30, 08:30 - 09:30, 05:00 - 06:00, etc.) so the 2D matrix table interface renders seamlessly.
 - Interleave subjects smartly: high-focus engineering concepts in the morning, practical coding in late afternoon, aptitude speed drills in the evening, and college coursework at night.
+- CRITICAL SYNTAX RULE: ALWAYS wrap the timetable JSON precisely in ```timetable and close it with ```. Ensure valid JSON syntax with double quotes so the UI renders the visual class schedule widget without errors.
 
 2. SINGLE GOAL STUDY PLANS & REVISION SCHEDULES:
 - When a student focuses on a SINGLE subject/exam goal, organize plans by separate days (Day 1, Day 2, etc.) with an interactive \`\`\`goal_card code block:

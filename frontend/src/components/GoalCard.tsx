@@ -33,8 +33,24 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   onRequestAdjustment,
   readOnly = false,
 }) => {
+  const [localCompletedMap, setLocalCompletedMap] = React.useState<{ [taskId: string]: boolean }>({});
+
+  const isTaskCompleted = (task: GoalTask) => {
+    return task.id in localCompletedMap ? localCompletedMap[task.id] : Boolean(task.completed);
+  };
+
+  const handleToggleTask = (taskId: string) => {
+    if (onToggleTask) {
+      onToggleTask(taskId);
+    }
+    setLocalCompletedMap((prev) => {
+      const current = taskId in prev ? prev[taskId] : Boolean(goal.tasks.find((t) => t.id === taskId)?.completed);
+      return { ...prev, [taskId]: !current };
+    });
+  };
+
   const totalTasks = goal.tasks.length;
-  const completedTasks = goal.tasks.filter((t) => t.completed).length;
+  const completedTasks = goal.tasks.filter((t) => isTaskCompleted(t)).length;
   const percentComplete = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const isAllComplete = totalTasks > 0 && completedTasks === totalTasks;
 
@@ -128,7 +144,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
       {/* Days & Tasks List */}
       <div className="goal-days-container">
         {dayGroups.map((group, groupIdx) => {
-          const dayCompletedCount = group.tasks.filter((t) => t.completed).length;
+          const dayCompletedCount = group.tasks.filter((t) => isTaskCompleted(t)).length;
           const isDayDone = group.tasks.length > 0 && dayCompletedCount === group.tasks.length;
 
           return (
@@ -152,7 +168,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
               <div className="goal-tasks-list">
                 {group.tasks.map((task, taskIdx) => {
-                  const isDone = task.completed;
+                  const isDone = isTaskCompleted(task);
                   return (
                     <div
                       key={task.id || `task-${groupIdx}-${taskIdx}`}
@@ -161,7 +177,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                       <button
                         type="button"
                         className="task-checkbox-btn"
-                        onClick={() => onToggleTask && onToggleTask(task.id)}
+                        onClick={() => handleToggleTask(task.id)}
                         disabled={readOnly}
                         aria-label={
                           isDone
