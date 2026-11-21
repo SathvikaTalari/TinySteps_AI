@@ -1,6 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
-import { GitBranch, AlertTriangle, Code2, Eye } from 'lucide-react';
+import {
+  GitBranch,
+  AlertTriangle,
+  Code2,
+  Eye,
+  Maximize2,
+  Minimize2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Download
+} from 'lucide-react';
 import { sanitizeMermaid, aggressiveRepairMermaid } from '../utils/mermaidSanitizer';
 
 interface MermaidDiagramProps {
@@ -12,6 +23,8 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [zoom, setZoom] = useState(1.0);
   const [themeMode, setThemeMode] = useState<string>(
     () => document.documentElement.getAttribute('data-theme') || 'light'
   );
@@ -30,6 +43,27 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
 
     return () => observer.disconnect();
   }, []);
+
+  // Handle Escape key to close fullscreen
+  useEffect(() => {
+    if (!isFullScreen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullScreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullScreen]);
+
+  // Reset zoom when opening fullscreen
+  useEffect(() => {
+    if (isFullScreen) {
+      setZoom(1.0);
+    }
+  }, [isFullScreen]);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,7 +104,6 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
       if (tempElem) tempElem.remove();
       const danglingError = document.getElementById(`d${id}`);
       if (danglingError) danglingError.remove();
-      // Also remove any global error SVGs or containers inserted into document.body
       document.querySelectorAll(`[id^="d${id}"], svg#d${id}, div#d${id}`).forEach((el) => el.remove());
     }
 
@@ -80,7 +113,7 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
       try {
         setError(null);
 
-        // Pass 1: Standard sanitization (auto-quote unquoted parentheses, formulas, subgraphs)
+        // Pass 1: Standard sanitization
         const sanitized = sanitizeMermaid(chart);
         if (!sanitized) return;
 
@@ -94,7 +127,7 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
           console.warn('Initial Mermaid render failed, attempting aggressive repair pass...', firstErr);
           cleanDanglingMermaidElements(uniqueId);
 
-          // Pass 2: Aggressive repair (strip problematic styles on subgraphs, simplify directives)
+          // Pass 2: Aggressive repair
           const retryId = `${uniqueId}-retry`;
           const repaired = aggressiveRepairMermaid(chart);
           const { svg } = await mermaid.render(retryId, repaired);
@@ -123,54 +156,169 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
     };
   }, [chart, themeMode]);
 
-  return (
-    <div className="mermaid-wrapper">
-      <div className="mermaid-header">
-        <div className="mermaid-title">
-          <GitBranch size={14} className="mermaid-icon" />
-          <span>Visual Diagram</span>
-        </div>
-        <button
-          type="button"
-          className="mermaid-toggle-btn"
-          onClick={() => setShowSource(!showSource)}
-          title={showSource ? 'Show rendered diagram' : 'Show diagram source code'}
-        >
-          {showSource ? (
-            <>
-              <Eye size={12} />
-              <span>View Diagram</span>
-            </>
-          ) : (
-            <>
-              <Code2 size={12} />
-              <span>Source</span>
-            </>
-          )}
-        </button>
-      </div>
+  const handleDownloadSvg = () => {
+    if (!svgContent) return;
+    const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tinysteps-flowchart-${Date.now()}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
-      {showSource ? (
-        <pre className="mermaid-source-pre">
-          <code>{chart.trim()}</code>
-        </pre>
-      ) : error ? (
-        <div className="mermaid-fallback-container">
-          <div className="mermaid-fallback-header">
-            <AlertTriangle size={14} className="fallback-warning-icon" />
-            <span>Diagram could not be rendered visually. Raw flow below:</span>
+  return (
+    <>
+      <div className="mermaid-wrapper">
+        <div className="mermaid-header">
+          <div className="mermaid-title">
+            <GitBranch size={14} className="mermaid-icon" />
+            <span>Visual Diagram</span>
           </div>
+
+          <div className="mermaid-header-actions">
+            {/* Extend / Fullscreen Button */}
+            <button
+              type="button"
+              className="mermaid-action-btn"
+              onClick={() => setIsFullScreen(true)}
+              title="Expand to Full Screen"
+              disabled={!svgContent || Boolean(error)}
+            >
+              <Maximize2 size={12} className="mermaid-expand-icon" />
+              <span>Full Screen</span>
+            </button>
+
+            {/* Source Code Toggle */}
+            <button
+              type="button"
+              className="mermaid-action-btn"
+              onClick={() => setShowSource(!showSource)}
+              title={showSource ? 'Show rendered diagram' : 'Show diagram source code'}
+            >
+              {showSource ? (
+                <>
+                  <Eye size={12} />
+                  <span>View Diagram</span>
+                </>
+              ) : (
+                <>
+                  <Code2 size={12} />
+                  <span>Source</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {showSource ? (
           <pre className="mermaid-source-pre">
             <code>{chart.trim()}</code>
           </pre>
-        </div>
-      ) : (
+        ) : error ? (
+          <div className="mermaid-fallback-container">
+            <div className="mermaid-fallback-header">
+              <AlertTriangle size={14} className="fallback-warning-icon" />
+              <span>Diagram could not be rendered visually. Raw flow below:</span>
+            </div>
+            <pre className="mermaid-source-pre">
+              <code>{chart.trim()}</code>
+            </pre>
+          </div>
+        ) : (
+          <div
+            ref={containerRef}
+            className="mermaid-svg-container"
+            dangerouslySetInnerHTML={{ __html: svgContent }}
+          />
+        )}
+      </div>
+
+      {/* FULLSCREEN LIGHTBOX MODAL */}
+      {isFullScreen && (
         <div
-          ref={containerRef}
-          className="mermaid-svg-container"
-          dangerouslySetInnerHTML={{ __html: svgContent }}
-        />
+          className="mermaid-fullscreen-overlay"
+          onClick={() => setIsFullScreen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full screen visual diagram"
+        >
+          <div className="mermaid-fullscreen-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="mermaid-fullscreen-header">
+              <div className="fullscreen-header-left">
+                <GitBranch size={16} className="fullscreen-icon" />
+                <span className="fullscreen-title">Visual Diagram • Full Screen</span>
+              </div>
+
+              <div className="fullscreen-controls">
+                {/* Zoom Controls */}
+                <div className="fullscreen-zoom-group">
+                  <button
+                    type="button"
+                    className="zoom-btn"
+                    onClick={() => setZoom((z) => Math.max(0.4, Number((z - 0.2).toFixed(1))))}
+                    title="Zoom Out (-)"
+                  >
+                    <ZoomOut size={13} />
+                  </button>
+                  <span className="zoom-badge">{Math.round(zoom * 100)}%</span>
+                  <button
+                    type="button"
+                    className="zoom-btn"
+                    onClick={() => setZoom((z) => Math.min(3.0, Number((z + 0.2).toFixed(1))))}
+                    title="Zoom In (+)"
+                  >
+                    <ZoomIn size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="zoom-btn"
+                    onClick={() => setZoom(1.0)}
+                    title="Reset Zoom to 100%"
+                  >
+                    <RotateCcw size={13} />
+                  </button>
+                </div>
+
+                {/* Download Button */}
+                <button
+                  type="button"
+                  className="fullscreen-btn"
+                  onClick={handleDownloadSvg}
+                  title="Download SVG file"
+                >
+                  <Download size={13} />
+                  <span>Download SVG</span>
+                </button>
+
+                {/* Exit Fullscreen Button */}
+                <button
+                  type="button"
+                  className="fullscreen-close-btn"
+                  onClick={() => setIsFullScreen(false)}
+                  title="Close Full Screen (Esc)"
+                >
+                  <Minimize2 size={13} />
+                  <span>Exit Full Screen</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="mermaid-fullscreen-body">
+              <div
+                className="fullscreen-svg-canvas"
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'center center',
+                }}
+                dangerouslySetInnerHTML={{ __html: svgContent }}
+              />
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 };
