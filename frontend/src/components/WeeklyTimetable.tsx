@@ -142,23 +142,8 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
     });
   }, [timetable.schedule]);
 
-  // Active days that have slots or standard 7 days
-  const activeDays = useMemo(() => {
-    const daysWithSlots = new Set(
-      timetable.schedule.map((s) => {
-        const matched = ORDERED_DAYS.find(
-          (od) => od.toLowerCase() === s.day.trim().toLowerCase()
-        );
-        return matched || s.day.trim();
-      })
-    );
-
-    const hasWeekend = daysWithSlots.has('Saturday') || daysWithSlots.has('Sunday');
-    if (hasWeekend) {
-      return ORDERED_DAYS;
-    }
-    return ORDERED_DAYS.slice(0, 5); // Monday through Friday
-  }, [timetable.schedule]);
+  // Active days: always include full week (Monday through Sunday)
+  const activeDays = ORDERED_DAYS;
 
   // Group slots by Day for the Grid and Day views
   const slotsByDay = useMemo(() => {
@@ -239,10 +224,38 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
     }
   };
 
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>, isModal = false) => {
+    // Avoid dragging when clicking interactive buttons/links
+    if ((e.target as HTMLElement).closest('button, input, a, svg')) return;
+    const target = isModal ? fullscreenTableScrollRef.current : tableScrollRef.current;
+    if (!target) return;
+    isDraggingRef.current = true;
+    startXRef.current = e.pageX - target.offsetLeft;
+    scrollLeftRef.current = target.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, isModal = false) => {
+    if (!isDraggingRef.current) return;
+    e.preventDefault();
+    const target = isModal ? fullscreenTableScrollRef.current : tableScrollRef.current;
+    if (!target) return;
+    const x = e.pageX - target.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    target.scrollLeft = scrollLeftRef.current - walk;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    isDraggingRef.current = false;
+  };
+
   const handleScrollTable = (direction: 'left' | 'right', isModal = false) => {
     const target = isModal ? fullscreenTableScrollRef.current : tableScrollRef.current;
     if (target) {
-      const amount = direction === 'left' ? -280 : 280;
+      const amount = direction === 'left' ? -350 : 350;
       target.scrollBy({ left: amount, behavior: 'smooth' });
     }
   };
@@ -250,8 +263,16 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
   const handleScrollToDay = (dayIndex: number, isModal = false) => {
     const target = isModal ? fullscreenTableScrollRef.current : tableScrollRef.current;
     if (target) {
-      const colWidth = 140;
-      target.scrollTo({ left: dayIndex * colWidth, behavior: 'smooth' });
+      if (dayIndex === 0) {
+        target.scrollTo({ left: 0, behavior: 'smooth' });
+        return;
+      }
+      if (dayIndex >= 5) {
+        // Saturday / Sunday: scroll fully to the right
+        target.scrollTo({ left: target.scrollWidth, behavior: 'smooth' });
+        return;
+      }
+      target.scrollTo({ left: dayIndex * 150, behavior: 'smooth' });
     }
   };
 
@@ -261,136 +282,22 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
       <>
         {/* VIEW MODE 1: CLASS SCHEDULE TABLE MATRIX */}
         {viewMode === 'table' && (
-          <div className="timetable-matrix-wrapper">
-            <div
-              ref={isModal ? fullscreenTableScrollRef : tableScrollRef}
-              className="timetable-matrix-scroll"
-            >
-              <table className="timetable-matrix-table">
-                <thead>
-                  <tr>
-                    <th className="matrix-time-header">Time Slots</th>
-                    {activeDays.map((day) => {
-                      const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
-                      return (
-                        <th
-                          key={day}
-                          className="matrix-day-header"
-                          style={{ backgroundColor: headerColor }}
-                        >
-                          <span className="matrix-day-title">{day}</span>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {uniqueTimeSlots.map((timeSlot) => (
-                    <tr key={timeSlot} className="matrix-row">
-                      <td className="matrix-time-cell">
-                        <div className="matrix-time-badge">
-                          <Clock size={11} className="matrix-clock-icon" />
-                          <span>{timeSlot}</span>
-                        </div>
-                      </td>
-
-                      {activeDays.map((day) => {
-                        const cellSlots = filteredSchedule.filter((s) => {
-                          const sDay = s.day.trim().toLowerCase();
-                          const targetDay = day.toLowerCase();
-                          const sTime = s.timeSlot.trim().toLowerCase();
-                          const targetTime = timeSlot.toLowerCase();
-                          return (
-                            (sDay === targetDay || sDay.startsWith(targetDay.slice(0, 3))) &&
-                            sTime === targetTime
-                          );
-                        });
-
-                        if (cellSlots.length === 0) {
-                          return (
-                            <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-empty">
-                              <span className="empty-slot-label">—</span>
-                            </td>
-                          );
-                        }
-
-                        return (
-                          <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-occupied">
-                            {cellSlots.map((slot) => {
-                              const isDone = isSlotCompleted(slot);
-                              const slotColor = slot.goalColor || 'var(--lavender-accent)';
-
-                              return (
-                                <div
-                                  key={slot.id}
-                                  className={`matrix-slot-block ${isDone ? 'slot-completed' : ''}`}
-                                  style={{ borderLeftColor: slotColor }}
-                                >
-                                  <div className="matrix-slot-top">
-                                    <button
-                                      type="button"
-                                      className="matrix-slot-check"
-                                      onClick={() => handleToggleSlot(slot.id)}
-                                      disabled={readOnly}
-                                      title={isDone ? 'Mark incomplete' : 'Mark complete'}
-                                    >
-                                      {isDone ? (
-                                        <CheckCircle2 size={15} className="check-icon checked" />
-                                      ) : (
-                                        <Circle size={15} className="check-icon unchecked" />
-                                      )}
-                                    </button>
-
-                                    <span
-                                      className="matrix-goal-tag"
-                                      style={{
-                                        color: slotColor,
-                                        backgroundColor: `${slotColor}14`,
-                                      }}
-                                    >
-                                      {slot.goalTitle}
-                                    </span>
-                                  </div>
-
-                                  <div className="matrix-slot-title">{slot.taskTitle}</div>
-
-                                  {slot.duration && (
-                                    <span className="matrix-slot-duration">⏱ {slot.duration}</span>
-                                  )}
-
-                                  {slot.outcome && (
-                                    <div className="matrix-slot-outcome" title={slot.outcome}>
-                                      <Target size={10} className="outcome-icon" />
-                                      <span>{slot.outcome}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* PERSISTENT HORIZONTAL SCROLL & DAY JUMP FOOTER */}
-            <div className="timetable-scroll-footer">
-              <div className="scroll-footer-left">
-                <span className="scroll-hint-label">Jump to Day:</span>
-                <div className="scroll-day-pills">
+          <div className="timetable-matrix-container">
+            {/* TOP DAY JUMP & HORIZONTAL NAVIGATION BAR */}
+            <div className="timetable-top-nav-bar">
+              <div className="top-nav-left">
+                <span className="top-nav-label">Move to Day:</span>
+                <div className="top-nav-day-pills">
                   {activeDays.map((d, idx) => (
                     <button
                       key={d}
                       type="button"
-                      className="day-jump-pill"
+                      className={`top-day-pill ${idx >= 5 ? 'weekend-pill' : ''}`}
                       onClick={() => handleScrollToDay(idx, isModal)}
-                      title={`Scroll horizontally to ${d}`}
+                      title={`Scroll table to ${d} ${idx >= 5 ? '(Weekend)' : ''}`}
                     >
                       <span
-                        className="day-jump-dot"
+                        className="top-day-dot"
                         style={{ backgroundColor: DAY_HEADER_COLORS[d] || 'var(--lavender-accent)' }}
                       />
                       <span>{d.slice(0, 3)}</span>
@@ -399,23 +306,21 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                 </div>
               </div>
 
-              <div className="scroll-footer-right">
+              <div className="top-nav-right">
                 <button
                   type="button"
                   className="table-nav-arrow-btn"
                   onClick={() => handleScrollTable('left', isModal)}
-                  title="Scroll table left (earlier days)"
-                  aria-label="Scroll left"
+                  title="Scroll left (earlier days)"
                 >
                   <ChevronLeft size={15} />
                   <span>Left</span>
                 </button>
                 <button
                   type="button"
-                  className="table-nav-arrow-btn"
+                  className="table-nav-arrow-btn table-nav-arrow-highlight"
                   onClick={() => handleScrollTable('right', isModal)}
-                  title="Scroll table right to see weekend (Sat/Sun)"
-                  aria-label="Scroll right"
+                  title="Scroll right to see weekend (Sat & Sun)"
                 >
                   <span>Right</span>
                   <ChevronRight size={15} />
@@ -425,12 +330,211 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                     type="button"
                     className="table-expand-pill-btn"
                     onClick={() => setIsFullScreen(true)}
-                    title="Open in Full Screen (see all 7 days side-by-side)"
+                    title="Open Full Screen (view all 7 days side-by-side)"
                   >
                     <Maximize2 size={13} />
                     <span>Full Screen</span>
                   </button>
                 )}
+              </div>
+            </div>
+
+            <div className="timetable-matrix-wrapper">
+              {/* Floating Left/Right Navigation Arrows */}
+              <button
+                type="button"
+                className="table-float-nav-btn table-float-left"
+                onClick={() => handleScrollTable('left', isModal)}
+                title="Scroll left (Monday - Wednesday)"
+                aria-label="Scroll left"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                className="table-float-nav-btn table-float-right"
+                onClick={() => handleScrollTable('right', isModal)}
+                title="Scroll right (Thursday - Sunday)"
+                aria-label="Scroll right"
+              >
+                <span className="float-btn-text">Move Right</span>
+                <ChevronRight size={16} />
+              </button>
+
+              <div
+                ref={isModal ? fullscreenTableScrollRef : tableScrollRef}
+                className="timetable-matrix-scroll"
+                onMouseDown={(e) => handleMouseDown(e, isModal)}
+                onMouseMove={(e) => handleMouseMove(e, isModal)}
+                onMouseUp={handleMouseUpOrLeave}
+                onMouseLeave={handleMouseUpOrLeave}
+              >
+                <table className="timetable-matrix-table">
+                  <thead>
+                    <tr>
+                      <th className="matrix-time-header">Time Slots</th>
+                      {activeDays.map((day) => {
+                        const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
+                        return (
+                          <th
+                            key={day}
+                            className="matrix-day-header"
+                            style={{ backgroundColor: headerColor }}
+                          >
+                            <span className="matrix-day-title">{day}</span>
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {uniqueTimeSlots.map((timeSlot) => (
+                      <tr key={timeSlot} className="matrix-row">
+                        <td className="matrix-time-cell">
+                          <div className="matrix-time-badge">
+                            <Clock size={11} className="matrix-clock-icon" />
+                            <span>{timeSlot}</span>
+                          </div>
+                        </td>
+
+                        {activeDays.map((day) => {
+                          const cellSlots = filteredSchedule.filter((s) => {
+                            const sDay = s.day.trim().toLowerCase();
+                            const targetDay = day.toLowerCase();
+                            const sTime = s.timeSlot.trim().toLowerCase();
+                            const targetTime = timeSlot.toLowerCase();
+                            return (
+                              (sDay === targetDay || sDay.startsWith(targetDay.slice(0, 3))) &&
+                              sTime === targetTime
+                            );
+                          });
+
+                          if (cellSlots.length === 0) {
+                            return (
+                              <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-empty">
+                                <span className="empty-slot-label">—</span>
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-occupied">
+                              {cellSlots.map((slot) => {
+                                const isDone = isSlotCompleted(slot);
+                                const slotColor = slot.goalColor || 'var(--lavender-accent)';
+
+                                return (
+                                  <div
+                                    key={slot.id}
+                                    className={`matrix-slot-block ${isDone ? 'slot-completed' : ''}`}
+                                    style={{ borderLeftColor: slotColor }}
+                                  >
+                                    <div className="matrix-slot-top">
+                                      <button
+                                        type="button"
+                                        className="matrix-slot-check"
+                                        onClick={() => handleToggleSlot(slot.id)}
+                                        disabled={readOnly}
+                                        title={isDone ? 'Mark incomplete' : 'Mark complete'}
+                                      >
+                                        {isDone ? (
+                                          <CheckCircle2 size={15} className="check-icon checked" />
+                                        ) : (
+                                          <Circle size={15} className="check-icon unchecked" />
+                                        )}
+                                      </button>
+
+                                      <span
+                                        className="matrix-goal-tag"
+                                        style={{
+                                          color: slotColor,
+                                          backgroundColor: `${slotColor}14`,
+                                        }}
+                                      >
+                                        {slot.goalTitle}
+                                      </span>
+                                    </div>
+
+                                    <div className="matrix-slot-title">{slot.taskTitle}</div>
+
+                                    {slot.duration && (
+                                      <span className="matrix-slot-duration">⏱ {slot.duration}</span>
+                                    )}
+
+                                    {slot.outcome && (
+                                      <div className="matrix-slot-outcome" title={slot.outcome}>
+                                        <Target size={10} className="outcome-icon" />
+                                        <span>{slot.outcome}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* PERSISTENT HORIZONTAL SCROLL & DAY JUMP FOOTER */}
+              <div className="timetable-scroll-footer">
+                <div className="scroll-footer-left">
+                  <span className="scroll-hint-label">Jump to Day:</span>
+                  <div className="scroll-day-pills">
+                    {activeDays.map((d, idx) => (
+                      <button
+                        key={d}
+                        type="button"
+                        className="day-jump-pill"
+                        onClick={() => handleScrollToDay(idx, isModal)}
+                        title={`Scroll horizontally to ${d}`}
+                      >
+                        <span
+                          className="day-jump-dot"
+                          style={{ backgroundColor: DAY_HEADER_COLORS[d] || 'var(--lavender-accent)' }}
+                        />
+                        <span>{d.slice(0, 3)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="scroll-footer-right">
+                  <button
+                    type="button"
+                    className="table-nav-arrow-btn"
+                    onClick={() => handleScrollTable('left', isModal)}
+                    title="Scroll table left (earlier days)"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft size={15} />
+                    <span>Left</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="table-nav-arrow-btn table-nav-arrow-highlight"
+                    onClick={() => handleScrollTable('right', isModal)}
+                    title="Scroll table right to see weekend (Sat/Sun)"
+                    aria-label="Scroll right"
+                  >
+                    <span>Right</span>
+                    <ChevronRight size={15} />
+                  </button>
+                  {!isModal && (
+                    <button
+                      type="button"
+                      className="table-expand-pill-btn"
+                      onClick={() => setIsFullScreen(true)}
+                      title="Open in Full Screen (see all 7 days side-by-side)"
+                    >
+                      <Maximize2 size={13} />
+                      <span>Full Screen</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

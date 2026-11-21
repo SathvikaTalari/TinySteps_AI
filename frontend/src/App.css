@@ -390,12 +390,16 @@
   align-items: flex-start;
 }
 
-.bubble-container.has-timetable,
+.ai-wrapper .bubble-container.has-timetable,
 .ai-wrapper .bubble-container:has(.timetable-card-widget),
 .ai-wrapper .bubble-container:has(.timetable-codeblock-container),
-.ai-wrapper .bubble-container:has(.mermaid-container) {
-  max-width: 100%;
-  width: 100%;
+.ai-wrapper .bubble-container:has(.mermaid-container),
+.bubble-container.has-timetable {
+  flex: 1 1 0px !important;
+  max-width: calc(100% - 46px) !important;
+  width: calc(100% - 46px) !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 
 /* Message Bubble */
@@ -406,6 +410,17 @@
   line-height: 1.58;
   word-break: break-word;
   position: relative;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ai-wrapper .bubble-container.has-timetable .message-bubble,
+.ai-wrapper .bubble-container:has(.timetable-card-widget) .message-bubble,
+.ai-wrapper .bubble-container:has(.timetable-codeblock-container) .message-bubble {
+  padding: 10px 12px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .user-bubble {
@@ -1767,11 +1782,15 @@
    ========================================================================== */
 
 .timetable-card-widget {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   margin-top: 14px;
   background: var(--bg-card);
   border: 1px solid var(--lavender-border);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  padding: 16px 18px;
   box-shadow: 0 4px 20px rgba(139, 92, 246, 0.08);
   display: flex;
   flex-direction: column;
@@ -1795,15 +1814,19 @@
 .timetable-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .timetable-title-wrapper {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .timetable-badge-icon {
@@ -1859,6 +1882,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .timetable-pill {
@@ -2581,37 +2606,60 @@
    CLASS SCHEDULE 2D MATRIX TABLE STYLING (IMAGE-MATCHED DESIGN)
    ========================================================================== */
 
+.timetable-matrix-container {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .timetable-matrix-wrapper {
   width: 100%;
+  max-width: 100%;
   border-radius: var(--radius-lg);
   border: 1px solid var(--lavender-border);
   overflow: hidden;
   background: var(--bg-card);
   box-shadow: 0 2px 12px rgba(139, 92, 246, 0.05);
+  position: relative;
 }
 
 .timetable-matrix-scroll {
   width: 100%;
   max-height: 480px;
-  overflow: auto;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-color: #7C3AED rgba(124, 58, 237, 0.08);
+  cursor: grab;
+}
+
+.timetable-matrix-scroll:active {
+  cursor: grabbing;
 }
 
 .timetable-matrix-scroll::-webkit-scrollbar {
-  height: 6px;
+  height: 10px !important;
+  width: 7px !important;
+  display: block !important;
 }
 
 .timetable-matrix-scroll::-webkit-scrollbar-track {
-  background: rgba(139, 92, 246, 0.05);
+  background: rgba(124, 58, 237, 0.08) !important;
   border-radius: var(--radius-full);
 }
 
 .timetable-matrix-scroll::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
+  background: linear-gradient(90deg, #7C3AED 0%, #A855F7 100%) !important;
   border-radius: var(--radius-full);
+  border: 2px solid var(--bg-card) !important;
+}
+
+.timetable-matrix-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #6D28D9 0%, #9333EA 100%) !important;
 }
 
 .timetable-matrix-scroll::-webkit-scrollbar-thumb:hover {
@@ -3123,6 +3171,140 @@
   color: #EDE9FE;
 }
 
+/* TOP HORIZONTAL NAVIGATION BAR */
+.timetable-top-nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--lavender-light);
+  border: 1.5px solid var(--lavender-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  box-shadow: 0 1px 4px rgba(139, 92, 246, 0.04);
+}
+
+.top-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.top-nav-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.top-nav-day-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.top-day-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--lavender-border);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.top-day-pill:hover {
+  background: var(--lavender-subtle);
+  border-color: var(--purple-accent);
+  transform: translateY(-1px);
+}
+
+.top-day-pill.weekend-pill {
+  border-color: #10B981;
+  background: rgba(16, 185, 129, 0.09);
+  color: #065F46;
+  font-weight: 700;
+}
+
+.top-day-pill.weekend-pill:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #059669;
+}
+
+.top-day-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.top-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-nav-arrow-highlight {
+  background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+  color: #FFFFFF !important;
+  border-color: #7C3AED !important;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3) !important;
+}
+
+.table-nav-arrow-highlight:hover {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%) !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px) !important;
+}
+
+/* FLOATING NAVIGATION ARROWS OVER MATRIX TABLE */
+.table-float-nav-btn {
+  position: absolute;
+  top: 50px;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.95) 0%, rgba(109, 40, 217, 0.95) 100%);
+  color: #FFFFFF;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.45);
+  backdrop-filter: blur(4px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.table-float-nav-btn:hover {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.6);
+}
+
+.table-float-left {
+  left: 138px;
+  padding: 6px 9px;
+}
+
+.table-float-right {
+  right: 12px;
+}
+
+.table-float-right .float-btn-text {
+  letter-spacing: 0.02em;
+}
+
 /* Horizontal Scroll & Day Jump Footer */
 .timetable-scroll-footer {
   display: flex;
@@ -3369,6 +3551,23 @@
 }
 
 /* Dark mode overrides */
+[data-theme='dark'] .timetable-top-nav-bar {
+  background: #180D2E;
+  border-color: #331A56;
+}
+
+[data-theme='dark'] .top-day-pill {
+  background: #241442;
+  border-color: #3B2366;
+  color: #E9D5FF;
+}
+
+[data-theme='dark'] .top-day-pill.weekend-pill {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #6EE7B7;
+}
+
 [data-theme='dark'] .timetable-scroll-footer {
   background: #180D2E;
   border-color: #331A56;
