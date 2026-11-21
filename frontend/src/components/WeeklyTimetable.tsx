@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { WeeklyTimetableData, TimetableSlot } from '../types/chat';
 import {
   CalendarRange,
@@ -14,7 +14,11 @@ import {
   Copy,
   Check,
   Target,
-  Award
+  Award,
+  Maximize2,
+  Minimize2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface WeeklyTimetableProps {
@@ -63,6 +67,22 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
   );
   const [copied, setCopied] = useState(false);
   const [localCompletedMap, setLocalCompletedMap] = useState<{ [slotId: string]: boolean }>({});
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const fullscreenTableScrollRef = useRef<HTMLDivElement>(null);
+
+  // Close full screen on Escape key
+  useEffect(() => {
+    if (!isFullScreen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullScreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullScreen]);
 
   const isSlotCompleted = (slot: TimetableSlot) => {
     return slot.id in localCompletedMap ? localCompletedMap[slot.id] : Boolean(slot.completed);
@@ -101,7 +121,6 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
       }
     });
 
-    // Try chronological sorting if strings contain hour numbers (e.g. "07:30 - 08:30" or "7:00 AM")
     return slots.sort((a, b) => {
       const matchA = a.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i);
       const matchB = b.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i);
@@ -116,15 +135,14 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
         if (matchB[3]?.toUpperCase() === 'PM' && hourB < 12) hourB += 12;
         if (matchB[3]?.toUpperCase() === 'AM' && hourB === 12) hourB = 0;
 
-        const totalA = hourA * 60 + minA;
-        const totalB = hourB * 60 + minB;
-        return totalA - totalB;
+        if (hourA !== hourB) return hourA - hourB;
+        return minA - minB;
       }
       return a.localeCompare(b);
     });
   }, [timetable.schedule]);
 
-  // Active days that have slots or standard 5/7 days
+  // Active days that have slots or standard 7 days
   const activeDays = useMemo(() => {
     const daysWithSlots = new Set(
       timetable.schedule.map((s) => {
@@ -135,7 +153,6 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
       })
     );
 
-    // If schedule covers weekends, show all 7 days; otherwise show Monday - Friday
     const hasWeekend = daysWithSlots.has('Saturday') || daysWithSlots.has('Sunday');
     if (hasWeekend) {
       return ORDERED_DAYS;
@@ -163,40 +180,51 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
     });
 
     const result: { day: string; slots: TimetableSlot[] }[] = [];
-    ORDERED_DAYS.forEach((d) => {
-      if (map[d] && map[d].length > 0) {
-        result.push({ day: d, slots: map[d] });
-      }
+    activeDays.forEach((d) => {
+      result.push({
+        day: d,
+        slots: map[d] || [],
+      });
     });
-
-    Object.keys(map).forEach((d) => {
-      if (!ORDERED_DAYS.includes(d) && map[d].length > 0) {
-        result.push({ day: d, slots: map[d] });
-      }
-    });
-
     return result;
+  }, [filteredSchedule, activeDays]);
+
+  // Group slots by Goal for the Goal breakdown view
+  const slotsByGoal = useMemo(() => {
+    const map: { [goal: string]: TimetableSlot[] } = {};
+
+    filteredSchedule.forEach((slot) => {
+      const g = slot.goalTitle.trim();
+      if (!map[g]) {
+        map[g] = [];
+      }
+      map[g].push(slot);
+    });
+
+    return Object.entries(map).map(([goalTitle, slots]) => ({
+      goalTitle,
+      slots,
+    }));
   }, [filteredSchedule]);
 
-  // Copy full timetable to clipboard in Markdown table format
   const handleCopyTimetable = async () => {
     try {
-      let md = `### 📅 ${timetable.title}\n`;
-      if (timetable.weekRange) md += `**Week:** ${timetable.weekRange} | `;
-      if (timetable.totalDailyTime) md += `**Daily Study Time:** ${timetable.totalDailyTime}\n\n`;
-
-      md += `| Time Slot | ` + activeDays.map((d) => d).join(' | ') + ` |\n`;
-      md += `| :--- | ` + activeDays.map(() => ':---').join(' | ') + ` |\n`;
+      let md = `## 📅 ${timetable.title} (${timetable.weekRange || 'Weekly Plan'})\n\n`;
+      if (timetable.totalDailyTime) {
+        md += `> **Daily Study Commitment**: ${timetable.totalDailyTime}\n\n`;
+      }
+      md += `| Time Slot | ${activeDays.join(' | ')} |\n`;
+      md += `| --- | ${activeDays.map(() => '---').join(' | ')} |\n`;
 
       uniqueTimeSlots.forEach((slotTime) => {
-        const rowCells = activeDays.map((day) => {
-          const matched = timetable.schedule.filter(
+        const rowCells = activeDays.map((d) => {
+          const matchSlots = timetable.schedule.filter(
             (s) =>
-              s.day.trim().toLowerCase() === day.toLowerCase() &&
+              s.day.trim().toLowerCase() === d.toLowerCase() &&
               s.timeSlot.trim().toLowerCase() === slotTime.toLowerCase()
           );
-          if (matched.length === 0) return '—';
-          return matched
+          if (matchSlots.length === 0) return '—';
+          return matchSlots
             .map((s) => `${s.completed ? '✅' : '⏳'} [${s.goalTitle}] ${s.taskTitle}`)
             .join('<br/>');
         });
@@ -211,402 +239,313 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
     }
   };
 
-  return (
-    <div className={`timetable-card-widget ${isAllComplete ? 'timetable-all-complete' : ''}`}>
-      {/* Header */}
-      <div className="timetable-header">
-        <div className="timetable-title-wrapper">
-          <div className="timetable-badge-icon">
-            {isAllComplete ? <Award size={20} className="award-icon" /> : <CalendarRange size={20} />}
-          </div>
-          <div>
-            <div className="timetable-subheading-row">
-              <span className="timetable-subheading">Class Schedule & Multi-Goal Timetable</span>
-              {timetable.weekRange && (
-                <span className="timetable-week-range">{timetable.weekRange}</span>
-              )}
-            </div>
-            <h3 className="timetable-title">{timetable.title}</h3>
-          </div>
-        </div>
+  const handleScrollTable = (direction: 'left' | 'right', isModal = false) => {
+    const target = isModal ? fullscreenTableScrollRef.current : tableScrollRef.current;
+    if (target) {
+      const amount = direction === 'left' ? -280 : 280;
+      target.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
 
-        {/* Action Controls in Header */}
-        <div className="timetable-header-actions">
-          {timetable.totalDailyTime && (
-            <span className="timetable-pill timetable-pill-time" title="Average Daily Study Time">
-              <Clock size={12} />
-              <span>{timetable.totalDailyTime}</span>
-            </span>
-          )}
+  const handleScrollToDay = (dayIndex: number, isModal = false) => {
+    const target = isModal ? fullscreenTableScrollRef.current : tableScrollRef.current;
+    if (target) {
+      const colWidth = 140;
+      target.scrollTo({ left: dayIndex * colWidth, behavior: 'smooth' });
+    }
+  };
 
-          <button
-            type="button"
-            className="timetable-copy-btn"
-            onClick={handleCopyTimetable}
-            title="Copy timetable to clipboard"
-          >
-            {copied ? (
-              <>
-                <Check size={12} className="copy-icon-success" />
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy size={12} />
-                <span>Copy Timetable</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Multi-Goal Subject Pills (Filterable) */}
-      {timetable.goals && timetable.goals.length > 0 && (
-        <div className="timetable-goals-filter-bar">
-          <span className="filter-label">Goals / Subjects:</span>
-          <button
-            type="button"
-            className={`goal-tag-pill ${selectedGoalFilter === null ? 'active' : ''}`}
-            onClick={() => setSelectedGoalFilter(null)}
-          >
-            <span className="goal-dot" style={{ backgroundColor: 'var(--lavender-accent)' }}></span>
-            <span>All Goals ({totalSlots})</span>
-          </button>
-
-          {timetable.goals.map((g) => {
-            const isSelected = selectedGoalFilter?.toLowerCase() === g.name.toLowerCase();
-            const goalCount = timetable.schedule.filter(
-              (s) => s.goalTitle.toLowerCase() === g.name.toLowerCase()
-            ).length;
-            const goalColor = g.color || 'var(--lavender-accent)';
-
-            return (
-              <button
-                key={g.id || g.name}
-                type="button"
-                className={`goal-tag-pill ${isSelected ? 'active' : ''}`}
-                style={{
-                  borderColor: isSelected ? goalColor : undefined,
-                  backgroundColor: isSelected ? `${goalColor}18` : undefined,
-                }}
-                onClick={() => setSelectedGoalFilter(isSelected ? null : g.name)}
-                title={`Filter by ${g.name} (${goalCount} sessions)`}
-              >
-                <span className="goal-dot" style={{ backgroundColor: goalColor }}></span>
-                <span className="goal-tag-name">{g.name}</span>
-                <span className="goal-tag-count">({goalCount})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Progress Bar */}
-      <div className="timetable-progress-section">
-        <div className="timetable-progress-labels">
-          <span className="progress-text">
-            <strong>{completedSlots}</strong> of <strong>{totalSlots}</strong> weekly study sessions completed
-          </span>
-          <span className="progress-percent">{percentComplete}%</span>
-        </div>
-        <div
-          className="progress-track"
-          role="progressbar"
-          aria-valuenow={percentComplete}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            className="progress-fill timetable-progress-fill"
-            style={{ width: `${percentComplete}%` }}
-          ></div>
-        </div>
-
-        {isAllComplete && (
-          <div className="timetable-celebration-banner">
-            <Sparkles size={14} />
-            <span>Outstanding consistency! You completed all scheduled sessions across all goals! 🎉</span>
-          </div>
-        )}
-      </div>
-
-      {/* View Switcher: Class Schedule Table (Default) vs Weekly Cards vs Day Agenda vs By Goal */}
-      <div className="timetable-view-switcher">
-        <button
-          type="button"
-          className={`view-tab-btn ${viewMode === 'table' ? 'active' : ''}`}
-          onClick={() => setViewMode('table')}
-        >
-          <TableIcon size={13} />
-          <span>Class Schedule Table</span>
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${viewMode === 'grid' ? 'active' : ''}`}
-          onClick={() => setViewMode('grid')}
-        >
-          <LayoutGrid size={13} />
-          <span>Day Cards</span>
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${viewMode === 'day' ? 'active' : ''}`}
-          onClick={() => setViewMode('day')}
-        >
-          <Calendar size={13} />
-          <span>Day Agenda</span>
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${viewMode === 'goal' ? 'active' : ''}`}
-          onClick={() => setViewMode('goal')}
-        >
-          <Layers size={13} />
-          <span>By Goal Breakdown</span>
-        </button>
-      </div>
-
-      {/* =========================================================================
-          VIEW MODE 1: CLASS SCHEDULE TABLE MATRIX (IMAGE-INSPIRED)
-          ========================================================================= */}
-      {viewMode === 'table' && (
-        <div className="timetable-matrix-wrapper">
-          <div className="timetable-matrix-scroll">
-            <table className="timetable-matrix-table">
-              <thead>
-                <tr>
-                  <th className="matrix-time-header">Time Slots</th>
-                  {activeDays.map((day) => {
-                    const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
-                    return (
-                      <th
-                        key={day}
-                        className="matrix-day-header"
-                        style={{ backgroundColor: headerColor }}
-                      >
-                        <span className="matrix-day-title">{day}</span>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {uniqueTimeSlots.map((timeSlot) => (
-                  <tr key={timeSlot} className="matrix-row">
-                    {/* Time Column (Y-Axis) */}
-                    <td className="matrix-time-cell">
-                      <div className="matrix-time-badge">
-                        <Clock size={11} className="matrix-clock-icon" />
-                        <span>{timeSlot}</span>
-                      </div>
-                    </td>
-
-                    {/* Day Columns (X-Axis) */}
+  // Reusable rendering function for view modes
+  const renderViewContent = (isModal: boolean = false) => {
+    return (
+      <>
+        {/* VIEW MODE 1: CLASS SCHEDULE TABLE MATRIX */}
+        {viewMode === 'table' && (
+          <div className="timetable-matrix-wrapper">
+            <div
+              ref={isModal ? fullscreenTableScrollRef : tableScrollRef}
+              className="timetable-matrix-scroll"
+            >
+              <table className="timetable-matrix-table">
+                <thead>
+                  <tr>
+                    <th className="matrix-time-header">Time Slots</th>
                     {activeDays.map((day) => {
-                      const cellSlots = filteredSchedule.filter((s) => {
-                        const sDay = s.day.trim().toLowerCase();
-                        const targetDay = day.toLowerCase();
-                        const sTime = s.timeSlot.trim().toLowerCase();
-                        const targetTime = timeSlot.toLowerCase();
-                        return (sDay === targetDay || sDay.startsWith(targetDay.slice(0, 3))) && sTime === targetTime;
-                      });
-
-                      if (cellSlots.length === 0) {
-                        return (
-                          <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-empty">
-                            <span className="empty-slot-label">—</span>
-                          </td>
-                        );
-                      }
-
+                      const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
                       return (
-                        <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-occupied">
-                          {cellSlots.map((slot) => {
-                            const isDone = isSlotCompleted(slot);
-                            const slotColor = slot.goalColor || 'var(--lavender-accent)';
-
-                            return (
-                              <div
-                                key={slot.id}
-                                className={`matrix-slot-block ${isDone ? 'slot-completed' : ''}`}
-                                style={{ borderLeftColor: slotColor }}
-                              >
-                                <div className="matrix-slot-top">
-                                  <button
-                                    type="button"
-                                    className="matrix-slot-check"
-                                    onClick={() => handleToggleSlot(slot.id)}
-                                    disabled={readOnly}
-                                    title={isDone ? 'Mark incomplete' : 'Mark complete'}
-                                  >
-                                    {isDone ? (
-                                      <CheckCircle2 size={15} className="check-icon checked" />
-                                    ) : (
-                                      <Circle size={15} className="check-icon unchecked" />
-                                    )}
-                                  </button>
-
-                                  <span
-                                    className="matrix-goal-tag"
-                                    style={{
-                                      color: slotColor,
-                                      backgroundColor: `${slotColor}16`,
-                                    }}
-                                  >
-                                    {slot.goalTitle}
-                                  </span>
-                                </div>
-
-                                <div className="matrix-slot-title">{slot.taskTitle}</div>
-
-                                {slot.duration && (
-                                  <span className="matrix-slot-duration">⏱ {slot.duration}</span>
-                                )}
-
-                                {slot.outcome && (
-                                  <div className="matrix-slot-outcome" title={slot.outcome}>
-                                    <Target size={10} className="outcome-icon" />
-                                    <span>{slot.outcome}</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </td>
+                        <th
+                          key={day}
+                          className="matrix-day-header"
+                          style={{ backgroundColor: headerColor }}
+                        >
+                          <span className="matrix-day-title">{day}</span>
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          VIEW MODE 2: DAY CARDS
-          ========================================================================= */}
-      {viewMode === 'grid' && (
-        <div className="timetable-grid-container">
-          {slotsByDay.map(({ day, slots }) => {
-            const dayDoneCount = slots.filter((s) => isSlotCompleted(s)).length;
-            const isDayFinished = slots.length > 0 && dayDoneCount === slots.length;
-            const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
-
-            return (
-              <div key={day} className={`timetable-day-col ${isDayFinished ? 'day-finished' : ''}`}>
-                <div className="day-col-header" style={{ borderBottomColor: `${headerColor}30` }}>
-                  <span className="day-col-name" style={{ color: headerColor }}>{day}</span>
-                  <span className={`day-col-badge ${isDayFinished ? 'done' : ''}`}>
-                    {dayDoneCount}/{slots.length}
-                  </span>
-                </div>
-
-                <div className="day-col-slots">
-                  {slots.map((slot) => {
-                    const isDone = isSlotCompleted(slot);
-                    const slotColor = slot.goalColor || 'var(--lavender-accent)';
-
-                    return (
-                      <div
-                        key={slot.id}
-                        className={`timetable-slot-card ${isDone ? 'slot-done' : ''}`}
-                        style={{ borderLeftColor: slotColor }}
-                      >
-                        <div className="slot-top-row">
-                          <button
-                            type="button"
-                            className="slot-checkbox-btn"
-                            onClick={() => handleToggleSlot(slot.id)}
-                            disabled={readOnly}
-                          >
-                            {isDone ? (
-                              <CheckCircle2 size={16} className="check-icon checked" />
-                            ) : (
-                              <Circle size={16} className="check-icon unchecked" />
-                            )}
-                          </button>
-
-                          <span className="slot-time-pill">
-                            <Clock size={10} />
-                            {slot.timeSlot}
-                          </span>
+                </thead>
+                <tbody>
+                  {uniqueTimeSlots.map((timeSlot) => (
+                    <tr key={timeSlot} className="matrix-row">
+                      <td className="matrix-time-cell">
+                        <div className="matrix-time-badge">
+                          <Clock size={11} className="matrix-clock-icon" />
+                          <span>{timeSlot}</span>
                         </div>
+                      </td>
 
-                        <div className="slot-goal-badge" style={{ color: slotColor, backgroundColor: `${slotColor}14` }}>
-                          <span className="goal-dot-sm" style={{ backgroundColor: slotColor }}></span>
-                          <span className="goal-name-text">{slot.goalTitle}</span>
-                        </div>
+                      {activeDays.map((day) => {
+                        const cellSlots = filteredSchedule.filter((s) => {
+                          const sDay = s.day.trim().toLowerCase();
+                          const targetDay = day.toLowerCase();
+                          const sTime = s.timeSlot.trim().toLowerCase();
+                          const targetTime = timeSlot.toLowerCase();
+                          return (
+                            (sDay === targetDay || sDay.startsWith(targetDay.slice(0, 3))) &&
+                            sTime === targetTime
+                          );
+                        });
 
-                        <div className="slot-task-title">{slot.taskTitle}</div>
+                        if (cellSlots.length === 0) {
+                          return (
+                            <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-empty">
+                              <span className="empty-slot-label">—</span>
+                            </td>
+                          );
+                        }
 
-                        {slot.duration && (
-                          <div className="slot-duration-tag">
-                            <span>⏱ {slot.duration}</span>
-                          </div>
-                        )}
+                        return (
+                          <td key={`${timeSlot}-${day}`} className="matrix-cell matrix-cell-occupied">
+                            {cellSlots.map((slot) => {
+                              const isDone = isSlotCompleted(slot);
+                              const slotColor = slot.goalColor || 'var(--lavender-accent)';
 
-                        {slot.outcome && (
-                          <div className="slot-outcome-text">
-                            <Target size={11} className="outcome-icon" />
-                            <span>{slot.outcome}</span>
-                          </div>
-                        )}
+                              return (
+                                <div
+                                  key={slot.id}
+                                  className={`matrix-slot-block ${isDone ? 'slot-completed' : ''}`}
+                                  style={{ borderLeftColor: slotColor }}
+                                >
+                                  <div className="matrix-slot-top">
+                                    <button
+                                      type="button"
+                                      className="matrix-slot-check"
+                                      onClick={() => handleToggleSlot(slot.id)}
+                                      disabled={readOnly}
+                                      title={isDone ? 'Mark incomplete' : 'Mark complete'}
+                                    >
+                                      {isDone ? (
+                                        <CheckCircle2 size={15} className="check-icon checked" />
+                                      ) : (
+                                        <Circle size={15} className="check-icon unchecked" />
+                                      )}
+                                    </button>
 
-                        {onReportProgress && !readOnly && isDone && (
-                          <button
-                            type="button"
-                            className="slot-quick-report-btn"
-                            onClick={() => onReportProgress(`${slot.goalTitle}: ${slot.taskTitle}`)}
-                            title="Tell coach you finished this"
-                          >
-                            Tell Coach
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                                    <span
+                                      className="matrix-goal-tag"
+                                      style={{
+                                        color: slotColor,
+                                        backgroundColor: `${slotColor}14`,
+                                      }}
+                                    >
+                                      {slot.goalTitle}
+                                    </span>
+                                  </div>
+
+                                  <div className="matrix-slot-title">{slot.taskTitle}</div>
+
+                                  {slot.duration && (
+                                    <span className="matrix-slot-duration">⏱ {slot.duration}</span>
+                                  )}
+
+                                  {slot.outcome && (
+                                    <div className="matrix-slot-outcome" title={slot.outcome}>
+                                      <Target size={10} className="outcome-icon" />
+                                      <span>{slot.outcome}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* PERSISTENT HORIZONTAL SCROLL & DAY JUMP FOOTER */}
+            <div className="timetable-scroll-footer">
+              <div className="scroll-footer-left">
+                <span className="scroll-hint-label">Jump to Day:</span>
+                <div className="scroll-day-pills">
+                  {activeDays.map((d, idx) => (
+                    <button
+                      key={d}
+                      type="button"
+                      className="day-jump-pill"
+                      onClick={() => handleScrollToDay(idx, isModal)}
+                      title={`Scroll horizontally to ${d}`}
+                    >
+                      <span
+                        className="day-jump-dot"
+                        style={{ backgroundColor: DAY_HEADER_COLORS[d] || 'var(--lavender-accent)' }}
+                      />
+                      <span>{d.slice(0, 3)}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* =========================================================================
-          VIEW MODE 3: DAY-BY-DAY AGENDA
-          ========================================================================= */}
-      {viewMode === 'day' && (
-        <div className="timetable-day-view">
-          <div className="day-tabs-bar">
+              <div className="scroll-footer-right">
+                <button
+                  type="button"
+                  className="table-nav-arrow-btn"
+                  onClick={() => handleScrollTable('left', isModal)}
+                  title="Scroll table left (earlier days)"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft size={15} />
+                  <span>Left</span>
+                </button>
+                <button
+                  type="button"
+                  className="table-nav-arrow-btn"
+                  onClick={() => handleScrollTable('right', isModal)}
+                  title="Scroll table right to see weekend (Sat/Sun)"
+                  aria-label="Scroll right"
+                >
+                  <span>Right</span>
+                  <ChevronRight size={15} />
+                </button>
+                {!isModal && (
+                  <button
+                    type="button"
+                    className="table-expand-pill-btn"
+                    onClick={() => setIsFullScreen(true)}
+                    title="Open in Full Screen (see all 7 days side-by-side)"
+                  >
+                    <Maximize2 size={13} />
+                    <span>Full Screen</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW MODE 2: DAY CARDS */}
+        {viewMode === 'grid' && (
+          <div className="timetable-grid-container">
             {slotsByDay.map(({ day, slots }) => {
-              const dayDoneCount = slots.filter((s) => s.completed).length;
-              const isSelected = activeDayTab === day;
-              const isFinished = slots.length > 0 && dayDoneCount === slots.length;
+              const dayDoneCount = slots.filter((s) => isSlotCompleted(s)).length;
+              const isDayFinished = slots.length > 0 && dayDoneCount === slots.length;
+              const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
 
               return (
-                <button
-                  key={day}
-                  type="button"
-                  className={`day-tab-pill ${isSelected ? 'active' : ''} ${isFinished ? 'finished' : ''}`}
-                  onClick={() => setActiveDayTab(day)}
-                >
-                  <span className="day-tab-text">{day.slice(0, 3)}</span>
-                  <span className="day-tab-badge">
-                    {dayDoneCount}/{slots.length}
-                  </span>
-                </button>
+                <div key={day} className={`timetable-day-col ${isDayFinished ? 'day-finished' : ''}`}>
+                  <div className="day-col-header" style={{ borderBottomColor: `${headerColor}30` }}>
+                    <span className="day-col-name" style={{ color: headerColor }}>{day}</span>
+                    <span className={`day-col-badge ${isDayFinished ? 'done' : ''}`}>
+                      {dayDoneCount}/{slots.length}
+                    </span>
+                  </div>
+
+                  <div className="day-col-slots">
+                    {slots.map((slot) => {
+                      const isDone = isSlotCompleted(slot);
+                      const slotColor = slot.goalColor || 'var(--lavender-accent)';
+
+                      return (
+                        <div
+                          key={slot.id}
+                          className={`timetable-slot-card ${isDone ? 'slot-done' : ''}`}
+                          style={{ borderLeftColor: slotColor }}
+                        >
+                          <div className="slot-top-row">
+                            <button
+                              type="button"
+                              className="slot-checkbox-btn"
+                              onClick={() => handleToggleSlot(slot.id)}
+                              disabled={readOnly}
+                            >
+                              {isDone ? (
+                                <CheckCircle2 size={16} className="check-icon checked" />
+                              ) : (
+                                <Circle size={16} className="check-icon unchecked" />
+                              )}
+                            </button>
+
+                            <span className="slot-time-pill">
+                              <Clock size={10} />
+                              {slot.timeSlot}
+                            </span>
+                          </div>
+
+                          <div className="slot-goal-badge" style={{ color: slotColor, backgroundColor: `${slotColor}14` }}>
+                            <span className="goal-dot-sm" style={{ backgroundColor: slotColor }}></span>
+                            <span className="goal-name-text">{slot.goalTitle}</span>
+                          </div>
+
+                          <div className="slot-task-title">{slot.taskTitle}</div>
+
+                          {slot.duration && (
+                            <div className="slot-duration-tag">
+                              <span>⏱ {slot.duration}</span>
+                            </div>
+                          )}
+
+                          {slot.outcome && (
+                            <div className="slot-outcome-text">
+                              <Target size={11} className="outcome-icon" />
+                              <span>{slot.outcome}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
+        )}
 
-          <div className="day-agenda-content">
+        {/* VIEW MODE 3: DAY AGENDA */}
+        {viewMode === 'day' && (
+          <div className="timetable-agenda-view">
+            <div className="agenda-day-tabs">
+              {activeDays.map((day) => {
+                const count = timetable.schedule.filter(
+                  (s) => s.day.trim().toLowerCase() === day.toLowerCase()
+                ).length;
+                const headerColor = DAY_HEADER_COLORS[day] || 'var(--lavender-accent)';
+
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    className={`day-tab-pill ${activeDayTab === day ? 'active' : ''}`}
+                    onClick={() => setActiveDayTab(day)}
+                    style={{
+                      borderBottomColor: activeDayTab === day ? headerColor : undefined,
+                    }}
+                  >
+                    <span className="day-dot" style={{ backgroundColor: headerColor }}></span>
+                    <span>{day}</span>
+                    <span className="day-count-badge">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
             {(() => {
               const activeDayData = slotsByDay.find((d) => d.day === activeDayTab);
               if (!activeDayData || activeDayData.slots.length === 0) {
                 return (
-                  <div className="empty-day-state">
-                    <Calendar size={28} />
+                  <div className="agenda-empty-state">
                     <p>No study sessions scheduled for {activeDayTab}.</p>
                   </div>
                 );
@@ -652,9 +591,8 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
                             </span>
                             <span
                               className="agenda-goal-pill"
-                              style={{ color: slotColor, backgroundColor: `${slotColor}18` }}
+                              style={{ color: slotColor, backgroundColor: `${slotColor}14` }}
                             >
-                              <span className="goal-dot-sm" style={{ backgroundColor: slotColor }}></span>
                               {slot.goalTitle}
                             </span>
                             {slot.duration && (
@@ -666,21 +604,22 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
 
                           {slot.outcome && (
                             <div className="agenda-outcome-row">
-                              <Target size={13} className="outcome-icon" />
-                              <span><strong>Outcome:</strong> {slot.outcome}</span>
+                              <Target size={12} className="outcome-icon" />
+                              <span>{slot.outcome}</span>
                             </div>
                           )}
-                        </div>
 
-                        {onReportProgress && !readOnly && isDone && (
-                          <button
-                            type="button"
-                            className="agenda-report-btn"
-                            onClick={() => onReportProgress(`${slot.goalTitle}: ${slot.taskTitle}`)}
-                          >
-                            Tell Coach
-                          </button>
-                        )}
+                          {onReportProgress && !readOnly && !isDone && (
+                            <button
+                              type="button"
+                              className="agenda-progress-btn"
+                              onClick={() => onReportProgress(slot.taskTitle)}
+                            >
+                              <Sparkles size={11} />
+                              <span>I completed this slot</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -688,58 +627,45 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
               );
             })()}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* =========================================================================
-          VIEW MODE 4: BY GOAL BREAKDOWN
-          ========================================================================= */}
-      {viewMode === 'goal' && (
-        <div className="timetable-by-goal-view">
-          <div className="goal-tabs-bar">
-            {timetable.goals.map((goal) => {
-              const isSelected = activeGoalTab === goal.name;
-              const goalSlots = timetable.schedule.filter(
-                (s) => s.goalTitle.toLowerCase() === goal.name.toLowerCase()
-              );
-              const doneCount = goalSlots.filter((s) => s.completed).length;
+        {/* VIEW MODE 4: BY GOAL BREAKDOWN */}
+        {viewMode === 'goal' && (
+          <div className="timetable-goal-breakdown-view">
+            <div className="goal-breakdown-tabs">
+              {timetable.goals.map((g) => {
+                const count = timetable.schedule.filter(
+                  (s) => s.goalTitle.toLowerCase() === g.name.toLowerCase()
+                ).length;
 
-              return (
-                <button
-                  key={goal.id || goal.name}
-                  type="button"
-                  className={`goal-tab-pill ${isSelected ? 'active' : ''}`}
-                  onClick={() => setActiveGoalTab(goal.name)}
-                  style={{
-                    borderColor: isSelected ? goal.color : undefined,
-                    backgroundColor: isSelected ? `${goal.color}15` : undefined,
-                  }}
-                >
-                  <span className="goal-dot-sm" style={{ backgroundColor: goal.color }}></span>
-                  <span className="goal-tab-name">{goal.name}</span>
-                  <span className="goal-tab-count">
-                    {doneCount}/{goalSlots.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className={`goal-tab-pill ${activeGoalTab === g.name ? 'active' : ''}`}
+                    onClick={() => setActiveGoalTab(g.name)}
+                    style={{
+                      borderBottomColor: activeGoalTab === g.name ? g.color : undefined,
+                    }}
+                  >
+                    <span className="goal-dot" style={{ backgroundColor: g.color }}></span>
+                    <span>{g.name}</span>
+                    <span className="goal-count-badge">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          <div className="goal-breakdown-content">
             {(() => {
-              const goalSlots = timetable.schedule.filter(
-                (s) => s.goalTitle.toLowerCase() === activeGoalTab.toLowerCase()
-              );
-              const goalMeta = timetable.goals.find(
-                (g) => g.name.toLowerCase() === activeGoalTab.toLowerCase()
-              );
+              const activeGroup = slotsByGoal.find((g) => g.goalTitle === activeGoalTab);
+              const goalSlots = activeGroup ? activeGroup.slots : [];
+              const goalMeta = timetable.goals.find((g) => g.name === activeGoalTab);
               const goalColor = goalMeta?.color || 'var(--lavender-accent)';
 
               if (goalSlots.length === 0) {
                 return (
-                  <div className="empty-day-state">
-                    <Layers size={28} />
-                    <p>No study sessions listed for {activeGoalTab}.</p>
+                  <div className="goal-empty-state">
+                    <p>No study sessions scheduled for {activeGoalTab}.</p>
                   </div>
                 );
               }
@@ -809,26 +735,331 @@ export const WeeklyTimetable: React.FC<WeeklyTimetableProps> = ({
               );
             })()}
           </div>
-        </div>
-      )}
+        )}
+      </>
+    );
+  };
 
-      {/* Footer Adjustment Action */}
-      {onRequestAdjustment && !readOnly && (
-        <div className="timetable-footer">
+  return (
+    <>
+      <div className={`timetable-card-widget ${isAllComplete ? 'timetable-all-complete' : ''}`}>
+        {/* Header */}
+        <div className="timetable-header">
+          <div className="timetable-title-wrapper">
+            <div className="timetable-badge-icon">
+              {isAllComplete ? <Award size={20} className="award-icon" /> : <CalendarRange size={20} />}
+            </div>
+            <div>
+              <div className="timetable-subheading-row">
+                <span className="timetable-subheading">Class Schedule & Multi-Goal Timetable</span>
+                {timetable.weekRange && (
+                  <span className="timetable-week-range">{timetable.weekRange}</span>
+                )}
+              </div>
+              <h3 className="timetable-title">{timetable.title}</h3>
+            </div>
+          </div>
+
+          {/* Action Controls in Header */}
+          <div className="timetable-header-actions">
+            {timetable.totalDailyTime && (
+              <span className="timetable-pill timetable-pill-time" title="Average Daily Study Time">
+                <Clock size={12} />
+                <span>{timetable.totalDailyTime}</span>
+              </span>
+            )}
+
+            <button
+              type="button"
+              className="timetable-copy-btn"
+              onClick={handleCopyTimetable}
+              title="Copy timetable to clipboard"
+            >
+              {copied ? (
+                <>
+                  <Check size={12} className="copy-icon-success" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={12} />
+                  <span>Copy Timetable</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="timetable-fullscreen-btn"
+              onClick={() => setIsFullScreen(true)}
+              title="Expand to Full Screen (see all days side-by-side)"
+              aria-label="Expand timetable to full screen"
+            >
+              <Maximize2 size={13} className="timetable-expand-icon" />
+              <span>Full Screen</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Multi-Goal Subject Pills (Filterable) */}
+        {timetable.goals && timetable.goals.length > 0 && (
+          <div className="timetable-goals-filter-bar">
+            <span className="filter-label">Goals / Subjects:</span>
+            <button
+              type="button"
+              className={`goal-tag-pill ${selectedGoalFilter === null ? 'active' : ''}`}
+              onClick={() => setSelectedGoalFilter(null)}
+            >
+              <span className="goal-dot" style={{ backgroundColor: 'var(--lavender-accent)' }}></span>
+              <span>All Goals ({totalSlots})</span>
+            </button>
+
+            {timetable.goals.map((g) => {
+              const isSelected = selectedGoalFilter?.toLowerCase() === g.name.toLowerCase();
+              const goalCount = timetable.schedule.filter(
+                (s) => s.goalTitle.toLowerCase() === g.name.toLowerCase()
+              ).length;
+
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={`goal-tag-pill ${isSelected ? 'active' : ''}`}
+                  onClick={() => setSelectedGoalFilter(isSelected ? null : g.name)}
+                  style={{
+                    borderColor: isSelected ? g.color : undefined,
+                    boxShadow: isSelected ? `0 0 0 2px ${g.color}30` : undefined,
+                  }}
+                >
+                  <span className="goal-dot" style={{ backgroundColor: g.color }}></span>
+                  <span>
+                    {g.name} ({goalCount})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Progress Bar & Status */}
+        <div className="timetable-progress-container">
+          <div className="timetable-progress-header">
+            <span className="progress-stat-text">
+              <strong>{completedSlots}</strong> of <strong>{totalSlots}</strong> weekly study sessions completed
+            </span>
+            <span className="progress-percent-badge">{percentComplete}%</span>
+          </div>
+          <div className="timetable-progress-bar-track">
+            <div
+              className={`timetable-progress-bar-fill ${isAllComplete ? 'progress-all-done' : ''}`}
+              style={{ width: `${percentComplete}%` }}
+            />
+          </div>
+        </div>
+
+        {/* View Mode Switcher Tabs */}
+        <div className="timetable-view-tabs">
           <button
             type="button"
-            className="adjust-timetable-btn"
-            onClick={() =>
-              onRequestAdjustment(
-                `Can we adjust my weekly timetable for "${timetable.title}"? I need to reschedule some time slots and re-balance my goals.`
-              )
-            }
+            className={`view-tab-btn ${viewMode === 'table' ? 'active' : ''}`}
+            onClick={() => setViewMode('table')}
           >
-            <Sliders size={13} />
-            <span>Need an adjustment? Ask Coach to rebalance weekly timetable</span>
+            <TableIcon size={13} />
+            <span>Class Schedule Table</span>
+          </button>
+          <button
+            type="button"
+            className={`view-tab-btn ${viewMode === 'grid' ? 'active' : ''}`}
+            onClick={() => setViewMode('grid')}
+          >
+            <LayoutGrid size={13} />
+            <span>Day Cards</span>
+          </button>
+          <button
+            type="button"
+            className={`view-tab-btn ${viewMode === 'day' ? 'active' : ''}`}
+            onClick={() => setViewMode('day')}
+          >
+            <Calendar size={13} />
+            <span>Day Agenda</span>
+          </button>
+          <button
+            type="button"
+            className={`view-tab-btn ${viewMode === 'goal' ? 'active' : ''}`}
+            onClick={() => setViewMode('goal')}
+          >
+            <Layers size={13} />
+            <span>By Goal Breakdown</span>
           </button>
         </div>
+
+        {/* Embedded View Mode Content */}
+        {renderViewContent(false)}
+
+        {/* Footer Adjustment Action */}
+        {onRequestAdjustment && !readOnly && (
+          <div className="timetable-footer">
+            <button
+              type="button"
+              className="adjust-timetable-btn"
+              onClick={() =>
+                onRequestAdjustment(
+                  `Can we adjust my weekly timetable for "${timetable.title}"? I need to reschedule some time slots and re-balance my goals.`
+                )
+              }
+            >
+              <Sliders size={13} />
+              <span>Need an adjustment? Ask Coach to rebalance weekly timetable</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* FULLSCREEN LIGHTBOX MODAL */}
+      {isFullScreen && (
+        <div
+          className="timetable-fullscreen-overlay"
+          onClick={() => setIsFullScreen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full screen weekly timetable"
+        >
+          <div className="timetable-fullscreen-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="timetable-fullscreen-header">
+              <div className="fullscreen-header-left">
+                <CalendarRange size={22} className="fullscreen-icon" />
+                <div>
+                  <div className="fullscreen-subtitle-row">
+                    <span className="fullscreen-subheading">Class Schedule & Multi-Goal Weekly Timetable</span>
+                    {timetable.weekRange && (
+                      <span className="timetable-week-range">{timetable.weekRange}</span>
+                    )}
+                  </div>
+                  <h2 className="fullscreen-modal-title">{timetable.title}</h2>
+                </div>
+              </div>
+
+              <div className="fullscreen-header-actions">
+                {timetable.totalDailyTime && (
+                  <span className="timetable-pill timetable-pill-time">
+                    <Clock size={12} />
+                    <span>{timetable.totalDailyTime}</span>
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  className="timetable-copy-btn"
+                  onClick={handleCopyTimetable}
+                  title="Copy timetable to clipboard"
+                >
+                  {copied ? (
+                    <>
+                      <Check size={12} className="copy-icon-success" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} />
+                      <span>Copy Timetable</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="timetable-fullscreen-close-btn"
+                  onClick={() => setIsFullScreen(false)}
+                  title="Close Full Screen (Esc)"
+                >
+                  <Minimize2 size={15} />
+                  <span>Exit Full Screen</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Toolbar: Filters & View Switcher */}
+            <div className="timetable-fullscreen-toolbar">
+              <div className="fullscreen-filter-pills">
+                <button
+                  type="button"
+                  className={`goal-tag-pill ${selectedGoalFilter === null ? 'active' : ''}`}
+                  onClick={() => setSelectedGoalFilter(null)}
+                >
+                  <span className="goal-dot" style={{ backgroundColor: 'var(--lavender-accent)' }}></span>
+                  <span>All Goals ({totalSlots})</span>
+                </button>
+
+                {timetable.goals.map((g) => {
+                  const isSelected = selectedGoalFilter?.toLowerCase() === g.name.toLowerCase();
+                  const goalCount = timetable.schedule.filter(
+                    (s) => s.goalTitle.toLowerCase() === g.name.toLowerCase()
+                  ).length;
+
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className={`goal-tag-pill ${isSelected ? 'active' : ''}`}
+                      onClick={() => setSelectedGoalFilter(isSelected ? null : g.name)}
+                      style={{
+                        borderColor: isSelected ? g.color : undefined,
+                        boxShadow: isSelected ? `0 0 0 2px ${g.color}30` : undefined,
+                      }}
+                    >
+                      <span className="goal-dot" style={{ backgroundColor: g.color }}></span>
+                      <span>
+                        {g.name} ({goalCount})
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="timetable-view-tabs">
+                <button
+                  type="button"
+                  className={`view-tab-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                >
+                  <TableIcon size={13} />
+                  <span>Class Schedule Table</span>
+                </button>
+                <button
+                  type="button"
+                  className={`view-tab-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid size={13} />
+                  <span>Day Cards</span>
+                </button>
+                <button
+                  type="button"
+                  className={`view-tab-btn ${viewMode === 'day' ? 'active' : ''}`}
+                  onClick={() => setViewMode('day')}
+                >
+                  <Calendar size={13} />
+                  <span>Day Agenda</span>
+                </button>
+                <button
+                  type="button"
+                  className={`view-tab-btn ${viewMode === 'goal' ? 'active' : ''}`}
+                  onClick={() => setViewMode('goal')}
+                >
+                  <Layers size={13} />
+                  <span>By Goal Breakdown</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="timetable-fullscreen-body">
+              {renderViewContent(true)}
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 };
