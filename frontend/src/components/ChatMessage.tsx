@@ -70,7 +70,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         {isUser ? <User size={16} /> : <Sparkles size={16} />}
       </div>
 
-      <div className="bubble-container">
+      <div className={`bubble-container ${activeTimetableData ? 'has-timetable' : ''}`}>
         <div className={`message-bubble ${isUser ? 'user-bubble' : 'ai-bubble'}`}>
           {isUser ? (
             <div className="message-content user-text">{message.text}</div>

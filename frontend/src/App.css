@@ -12,7 +12,7 @@
 
 .chat-card {
   width: 100%;
-  max-width: 900px;
+  max-width: min(95vw, 980px);
   height: calc(100vh - 32px);
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
@@ -26,6 +26,7 @@
 
 /* Header */
 .chat-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -279,13 +280,43 @@
 }
 
 /* Messages Area */
-.messages-area {
-  flex: 1;
+.messages-area,
+.chat-messages {
+  flex: 1 1 0%;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px 24px;
   background-color: var(--bg-messages);
   display: flex;
   flex-direction: column;
+  gap: 18px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.messages-area::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.messages-area::-webkit-scrollbar-track,
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-area::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+}
+
+.messages-area::-webkit-scrollbar-thumb:hover,
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
 }
 
 .messages-list {
@@ -339,7 +370,9 @@
 .bubble-container {
   display: flex;
   flex-direction: column;
-  max-width: 78%;
+  max-width: 82%;
+  min-width: 0;
+  width: auto;
 }
 
 .user-wrapper .bubble-container {
@@ -348,6 +381,14 @@
 
 .ai-wrapper .bubble-container {
   align-items: flex-start;
+}
+
+.bubble-container.has-timetable,
+.ai-wrapper .bubble-container:has(.timetable-card-widget),
+.ai-wrapper .bubble-container:has(.timetable-codeblock-container),
+.ai-wrapper .bubble-container:has(.mermaid-container) {
+  max-width: 100%;
+  width: 100%;
 }
 
 /* Message Bubble */
@@ -745,6 +786,7 @@
 
 /* Suggested Prompts */
 .suggested-prompts-container {
+  flex-shrink: 0;
   padding: 12px 20px 8px 20px;
   background-color: var(--bg-messages);
   border-top: 1px solid var(--lavender-subtle);
@@ -803,6 +845,7 @@
 
 /* Chat Input Bar */
 .chat-input-wrapper {
+  flex-shrink: 0;
   padding: 14px 20px 16px 20px;
   background-color: var(--bg-card);
   border-top: 1px solid var(--lavender-border);
@@ -1361,7 +1404,8 @@
   color: #C4B5FD;
 }
 
-[data-theme="dark"] .messages-area {
+[data-theme="dark"] .messages-area,
+[data-theme="dark"] .chat-messages {
   background-color: var(--bg-messages);
 }
 
@@ -1621,7 +1665,8 @@
     font-size: 0.75rem;
   }
 
-  .messages-area {
+  .messages-area,
+  .chat-messages {
     padding: 14px 16px;
   }
 
@@ -2542,6 +2587,27 @@
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.timetable-matrix-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.timetable-matrix-scroll::-webkit-scrollbar-track {
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: var(--radius-full);
+}
+
+.timetable-matrix-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+}
+
+.timetable-matrix-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
 }
 
 .timetable-matrix-table {

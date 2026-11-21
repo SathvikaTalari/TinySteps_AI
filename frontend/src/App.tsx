@@ -328,7 +328,7 @@ export function App() {
         )}
 
         {/* Messages Stream */}
-        <div className="chat-messages" role="log" aria-live="polite">
+        <div className="messages-area chat-messages" role="log" aria-live="polite">
           {messages.map((message) => (
             <ChatMessage
               key={message.id}
