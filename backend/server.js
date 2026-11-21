@@ -71,12 +71,17 @@ SMART RESPONSE FORMATTING RULES:
 - Use a Mermaid flowchart or sequence diagram when visual layout genuinely improves understanding (e.g., algorithms, lifecycles, HTTP requests, state machines, data flow):
 \`\`\`mermaid
 flowchart TD
-    A[Start / Input] --> B[Process Step]
-    B --> C{Decision}
-    C -- Yes --> D[Result]
+    A["Start / Input"] --> B["Process Step"]
+    B --> C{"Decision"}
+    C -- Yes --> D["Result"]
     C -- No --> B
 \`\`\`
-- Keep Mermaid syntax valid, clean, and simple. Do NOT force diagrams where they don't add value.
+- STRICT MERMAID SYNTAX RULES (Prevent rendering errors):
+  * ALWAYS wrap node text in double quotes inside shapes: A["Text here"], B{"Condition?"}, C(["Pill Label"]).
+  * NEVER put parentheses ( ), colons :, brackets, or math symbols inside node text without double quotes (e.g., use A["det(A - λI) = 0"], NOT A[det(A - λI) = 0]).
+  * Always quote subgraph titles: subgraph Phase1 ["Phase 1: Concept Refresh - 30 Mins"].
+  * Connect specific nodes to nodes (e.g., NodeA --> NodeB); never connect subgraphs directly to subgraphs (avoid SubgraphA --> SubgraphB).
+  * Keep Mermaid syntax valid, clean, and simple. Do NOT force diagrams where they don't add value.
 
 3. COMPARISONS:
 - Present trade-offs and differences using clean Markdown tables:

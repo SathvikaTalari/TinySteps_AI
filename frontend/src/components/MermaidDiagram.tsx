@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 import { GitBranch, AlertTriangle, Code2, Eye } from 'lucide-react';
+import { sanitizeMermaid, aggressiveRepairMermaid } from '../utils/mermaidSanitizer';
 
 interface MermaidDiagramProps {
   chart: string;
@@ -37,6 +38,7 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
 
     mermaid.initialize({
       startOnLoad: false,
+      suppressErrorRendering: true,
       theme: isDark ? 'dark' : 'base',
       themeVariables: isDark
         ? {
@@ -63,22 +65,48 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
       securityLevel: 'loose',
     });
 
+    function cleanDanglingMermaidElements(id: string) {
+      const tempElem = document.getElementById(id);
+      if (tempElem) tempElem.remove();
+      const danglingError = document.getElementById(`d${id}`);
+      if (danglingError) danglingError.remove();
+      // Also remove any global error SVGs or containers inserted into document.body
+      document.querySelectorAll(`[id^="d${id}"], svg#d${id}, div#d${id}`).forEach((el) => el.remove());
+    }
+
     async function renderDiagram() {
-      if (!chart.trim()) return;
+      if (!chart || !chart.trim()) return;
 
       try {
         setError(null);
-        const cleanChart = chart
-          .replace(/^```mermaid\s*/i, '')
-          .replace(/```$/, '')
-          .trim();
 
-        const { svg } = await mermaid.render(uniqueId, cleanChart);
-        if (isMounted) {
-          setSvgContent(svg);
+        // Pass 1: Standard sanitization (auto-quote unquoted parentheses, formulas, subgraphs)
+        const sanitized = sanitizeMermaid(chart);
+        if (!sanitized) return;
+
+        try {
+          const { svg } = await mermaid.render(uniqueId, sanitized);
+          if (isMounted) {
+            setSvgContent(svg);
+          }
+          return;
+        } catch (firstErr) {
+          console.warn('Initial Mermaid render failed, attempting aggressive repair pass...', firstErr);
+          cleanDanglingMermaidElements(uniqueId);
+
+          // Pass 2: Aggressive repair (strip problematic styles on subgraphs, simplify directives)
+          const retryId = `${uniqueId}-retry`;
+          const repaired = aggressiveRepairMermaid(chart);
+          const { svg } = await mermaid.render(retryId, repaired);
+          if (isMounted) {
+            setSvgContent(svg);
+          }
         }
       } catch (err: unknown) {
-        console.warn('Mermaid rendering error:', err);
+        console.warn('Mermaid rendering failed after repair:', err);
+        cleanDanglingMermaidElements(uniqueId);
+        cleanDanglingMermaidElements(`${uniqueId}-retry`);
+
         if (isMounted) {
           const errMsg = err instanceof Error ? err.message : 'Invalid diagram syntax';
           setError(errMsg);
@@ -90,8 +118,8 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ chart }) => {
 
     return () => {
       isMounted = false;
-      const tempElem = document.getElementById(uniqueId);
-      if (tempElem) tempElem.remove();
+      cleanDanglingMermaidElements(uniqueId);
+      cleanDanglingMermaidElements(`${uniqueId}-retry`);
     };
   }, [chart, themeMode]);
 
