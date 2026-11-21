@@ -168,10 +168,28 @@ export function App() {
     }
   }, [activeTimetable]);
 
-  // Smooth scroll to bottom
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Smooth scroll to bottom strictly within the messages container
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    // Keep outer cards from ever scrolling out of view
+    window.scrollTo(0, 0);
+    const cardEl = document.querySelector('.chat-card');
+    if (cardEl && cardEl.scrollTop > 0) {
+      cardEl.scrollTop = 0;
+    }
+    const appEl = document.querySelector('.app-container');
+    if (appEl && appEl.scrollTop > 0) {
+      appEl.scrollTop = 0;
+    }
+
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages.length, isLoading]);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -328,7 +346,7 @@ export function App() {
         )}
 
         {/* Messages Stream */}
-        <div className="messages-area chat-messages" role="log" aria-live="polite">
+        <div ref={messagesContainerRef} className="messages-area chat-messages" role="log" aria-live="polite">
           {messages.map((message) => (
             <ChatMessage
               key={message.id}

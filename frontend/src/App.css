@@ -4,16 +4,21 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   background: radial-gradient(circle at 10% 20%, #EDE7FB 0%, #F6F4FD 60%, #E8E1F8 100%);
   padding: 16px;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .chat-card {
   width: 100%;
   max-width: min(95vw, 980px);
   height: calc(100vh - 32px);
+  height: calc(100dvh - 32px);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -282,10 +287,12 @@
 /* Messages Area */
 .messages-area,
 .chat-messages {
-  flex: 1 1 0%;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex: 1 1 0px !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   padding: 20px 24px;
   background-color: var(--bg-messages);
   display: flex;
@@ -2585,9 +2592,10 @@
 
 .timetable-matrix-scroll {
   width: 100%;
-  overflow-x: auto;
+  max-height: 480px;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
@@ -2631,7 +2639,8 @@
   min-width: 120px;
   position: sticky;
   left: 0;
-  z-index: 3;
+  top: 0;
+  z-index: 10;
   border-right: 2px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -2645,6 +2654,9 @@
   border-right: 1px solid rgba(255, 255, 255, 0.2);
   transition: all var(--transition-fast);
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .matrix-day-header:last-child {
